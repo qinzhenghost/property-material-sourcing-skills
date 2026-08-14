@@ -1,0 +1,294 @@
+$schema: "https://json-schema.org/draft/2020-12/schema"
+$id: "https://example.local/schemas/property-material-supplier-match.schema.yaml"
+title: "物业物资官方库供方匹配结果"
+description: >-
+  用于记录已确认采购需求与企业内部官方供方库之间的匹配结果。
+  该结果只形成“候选邀标沟通池”，不等于最终中选结论。
+type: object
+additionalProperties: false
+required:
+  - schema_version
+  - sourcing_policy
+  - requirement_reference
+  - search_scope
+  - candidates
+  - human_checkpoint
+properties:
+  schema_version:
+    type: string
+    const: "0.2.0"
+
+  sourcing_policy:
+    type: object
+    additionalProperties: false
+    required:
+      - supplier_source
+      - public_supplier_discovery_allowed
+      - human_confirmation_required
+    properties:
+      supplier_source:
+        type: string
+        const: "official_registry_only"
+      public_supplier_discovery_allowed:
+        type: boolean
+        const: false
+      human_confirmation_required:
+        type: boolean
+        const: true
+      notes:
+        type: array
+        items:
+          type: string
+
+  requirement_reference:
+    type: object
+    additionalProperties: false
+    required:
+      - requirement_status
+      - procurement_domain
+      - category_path
+      - delivery_regions
+    properties:
+      requirement_status:
+        type: string
+        const: "confirmed"
+      procurement_domain:
+        type: string
+        const: "property_material"
+      project_name:
+        type: [string, "null"]
+      category_path:
+        type: object
+        additionalProperties: false
+        required: [level_1, level_2, level_3]
+        properties:
+          level_1:
+            type: string
+            const: "物资类"
+          level_2:
+            type: [string, "null"]
+          level_3:
+            type: [string, "null"]
+          evidence:
+            type: [string, "null"]
+      delivery_regions:
+        type: array
+        minItems: 1
+        items:
+          type: string
+      required_qualifications:
+        type: array
+        items:
+          type: string
+      supplier_hard_constraints:
+        type: array
+        items:
+          type: string
+
+  search_scope:
+    type: object
+    additionalProperties: false
+    required:
+      - official_sources_used
+      - searched_category_terms
+    properties:
+      official_sources_used:
+        type: array
+        minItems: 1
+        items:
+          type: object
+          additionalProperties: false
+          required: [source_file, registry_tier]
+          properties:
+            source_file:
+              type: string
+            source_sheet:
+              type: [string, "null"]
+            registry_tier:
+              type: string
+              enum:
+                - approved_official_registry
+                - temporary_internal_registry
+                - unknown_internal_registry
+      searched_category_terms:
+        type: array
+        items:
+          type: string
+      normalized_delivery_regions:
+        type: array
+        items:
+          type: string
+      limitations:
+        type: array
+        items:
+          type: string
+
+  candidates:
+    type: array
+    items:
+      $ref: "#/$defs/candidate"
+
+  excluded_records:
+    type: array
+    items:
+      type: object
+      additionalProperties: false
+      properties:
+        supplier_name:
+          type: string
+        reason:
+          type: string
+        evidence:
+          type: array
+          items:
+            type: string
+
+  candidate_summary:
+    type: object
+    additionalProperties: false
+    properties:
+      total_records_searched:
+        type: integer
+        minimum: 0
+      category_matches:
+        type: integer
+        minimum: 0
+      full_region_matches:
+        type: integer
+        minimum: 0
+      partial_region_matches:
+        type: integer
+        minimum: 0
+      needs_human_check:
+        type: integer
+        minimum: 0
+
+  human_checkpoint:
+    type: object
+    additionalProperties: false
+    required:
+      - status
+      - allowed_next_action
+    properties:
+      status:
+        type: string
+        enum: [pending, confirmed]
+      allowed_next_action:
+        type: string
+        enum:
+          - review_candidate_pool
+          - prepare_sourcing_invitation
+      selected_supplier_ids:
+        type: array
+        items:
+          type: string
+      notes:
+        type: array
+        items:
+          type: string
+
+  handoff:
+    type: object
+    additionalProperties: false
+    properties:
+      workflow_stage:
+        type: string
+        enum: [supplier_candidates_ready, intention_collection_ready]
+      next_skill:
+        type: string
+        const: sourcing-invitation
+      unresolved_blockers:
+        type: array
+        items:
+          type: string
+
+$defs:
+  candidate:
+    type: object
+    additionalProperties: false
+    required:
+      - supplier_name
+      - registry_tier
+      - hard_gate
+      - fit
+      - evidence
+    properties:
+      supplier_id:
+        type: [string, "null"]
+      supplier_name:
+        type: string
+      registry_tier:
+        type: string
+        enum:
+          - approved_official_registry
+          - temporary_internal_registry
+          - unknown_internal_registry
+      official_fields:
+        type: object
+        additionalProperties: true
+        description: "保留当前判断所引用的官方字段快照。"
+      hard_gate:
+        type: object
+        additionalProperties: false
+        required:
+          - official_source
+          - material_supplier
+          - category
+          - region
+          - result
+        properties:
+          official_source:
+            type: string
+            enum: [pass, fail, needs_human_check]
+          material_supplier:
+            type: string
+            enum: [pass, fail, needs_human_check]
+          category:
+            type: string
+            enum: [pass, partial, fail, needs_human_check]
+          region:
+            type: string
+            enum: [pass, partial, fail, needs_human_check]
+          qualification:
+            type: string
+            enum: [pass, expired, missing, not_required, needs_human_check]
+          registry_status:
+            type: string
+            enum: [pass, fail, unknown, needs_human_check]
+          result:
+            type: string
+            enum:
+              - eligible_for_review
+              - partial_match_for_review
+              - needs_human_check
+              - ineligible
+      fit:
+        type: object
+        additionalProperties: false
+        properties:
+          level:
+            type: string
+            enum: [high, medium, low, unknown]
+          signals:
+            type: array
+            items:
+              type: string
+          risks:
+            type: array
+            items:
+              type: string
+          missing_information:
+            type: array
+            items:
+              type: string
+      evidence:
+        type: array
+        minItems: 1
+        items:
+          type: string
+      recommended_action:
+        type: string
+        enum:
+          - include_for_human_review
+          - hold_for_official_data_check
+          - exclude
