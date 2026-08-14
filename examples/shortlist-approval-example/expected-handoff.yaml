@@ -1,0 +1,84 @@
+schema_version: "0.6.0"
+
+project:
+  project_name: "示例物业物资采购项目"
+  category: "物资类"
+  sourcing_method: invitation_tender
+
+shortlist_summary:
+  longlist_count: 5
+  contacted_count: 5
+  replied_count: 4
+  shortlisted_count: 2
+  excluded_count: 2
+  pending_count: 1
+
+  shortlisted_suppliers:
+    - supplier_name: "示例供应商A"
+      status: shortlisted
+      reasons:
+        - "有合作意向"
+        - "关键邀标条件满足"
+      attention_items: []
+      evidence_source:
+        - "供方短名单表"
+
+    - supplier_name: "示例供应商B"
+      status: shortlisted
+      reasons:
+        - "有合作意向"
+        - "供方回复满足当前项目要求"
+      attention_items:
+        - "后续继续关注交付安排"
+      evidence_source:
+        - "供方短名单表"
+
+  excluded_suppliers:
+    - supplier_name: "示例供应商C"
+      status: excluded
+      reasons:
+        - "明确不接受当前项目关键商务条件"
+      attention_items: []
+      evidence_source:
+        - "供方回复"
+
+    - supplier_name: "示例供应商D"
+      status: excluded
+      reasons:
+        - "明确无合作意向"
+      attention_items: []
+      evidence_source:
+        - "供方回复"
+
+  pending_suppliers:
+    - supplier_name: "示例供应商E"
+      status: pending_clarification
+      reasons:
+        - "关键资料尚未反馈完整"
+      attention_items:
+        - "待补充关键能力资料"
+      evidence_source:
+        - "供方短名单表"
+
+approval_email:
+  status: draft_pending_human_review
+  subject: "关于示例物业物资采购项目供方短名单的报批"
+  body: "示例邮件正文由模板生成，发送前需采购员确认。"
+  attachments:
+    - "示例物业物资采购项目供方短名单.xlsx"
+
+strategy_handoff:
+  selection_rationale:
+    - "短名单仅基于官方库供方及真实回复形成"
+  supplier_market_observations:
+    - "本轮共5家供方参与沟通，其中4家明确回复"
+  risk_flags:
+    - "仍有1家供方资料待澄清"
+  shortlisted_supplier_names:
+    - "示例供应商A"
+    - "示例供应商B"
+
+human_review:
+  shortlist_confirmed: false
+  email_confirmed: false
+  reviewer_note: null
