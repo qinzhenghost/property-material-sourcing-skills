@@ -1,5 +1,23 @@
 # CHANGELOG
 
+## v0.6.0
+
+新增：
+
+- `shortlist-approval/SKILL.md`
+- `shortlist-approval.schema.yaml`
+- `shortlist-approval/templates/shortlist-approval-email.md`
+- 短名单报批 Handoff 示例
+
+流程调整：
+
+- `supplier-shortlist` 输出经采购员确认后进入 `shortlist-approval`。
+- 本阶段不重新评分、不重新筛选供方，只整理已确认短名单。
+- 固定输出“短名单报批邮件草稿 + strategy_handoff”。
+- 入围/未入围原因必须来自短名单表、供方真实回复或官方数据。
+- 未经采购员确认不得将“建议入围”写成“已入围”。
+- 邮件仅生成草稿，不自动发送。
+
 ## v0.5.2
 
 基于米面粮油真实历史订单与现有需求清单联合验证：
