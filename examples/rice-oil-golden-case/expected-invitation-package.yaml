@@ -1,0 +1,48 @@
+sourcing_invitation_package:
+  schema_version: 0.3.0
+  project:
+    project_name: 重庆区域2025-2026年米面粮油物资框架
+    procurement_domain: property_material
+    delivery_regions:
+    - 重庆市
+    - 贵州省
+    cooperation_period: 1年
+    payment_terms: 收货确认之日起120个自然日内支付；对账5天、开票10天、结算105天
+    quotation_basis: 综合报价，含税含运
+    contact_name: 秦臻
+    contact_phone: '13628322268'
+    contact_email: null
+    response_deadline: null
+  artifacts:
+    invitation_email:
+      format: markdown_or_email_body
+      template: skills/sourcing-invitation/templates/invitation-email-template.md
+      status: blocked
+    requirement_list:
+      format: xlsx
+      source: confirmed_requirement
+      status: generated
+    supplier_intention_form:
+      format: xlsx
+      template: skills/sourcing-invitation/templates/招标意向征集登记表模板.xlsx
+      status: generated
+  consistency_check:
+    passed: false
+    checked_fields:
+    - project_name
+    - delivery_regions
+    - payment_terms
+    - cooperation_period
+    - quotation_basis
+    - contact_name
+    - contact_phone
+    - contact_email
+    - response_deadline
+    issues:
+    - 当前黄金样本未提供本项目回复邮箱。
+    - 当前黄金样本未提供本项目回复截止时间。
+    - 不得沿用历史邮件模板中的 qinz07@onewo.com 或 2026.8.10 作为当前项目值。
+  human_checkpoint:
+    status: pending_send_review
+    notes:
+    - 补充当前项目回复邮箱和回复截止时间后，方可生成可发送邮件正文。
