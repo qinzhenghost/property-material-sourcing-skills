@@ -1,0 +1,166 @@
+$schema: "https://json-schema.org/draft/2020-12/schema"
+$id: "https://example.local/schemas/official-property-material-supplier.schema.yaml"
+title: "物业物资官方供方库供应商"
+description: >-
+  基于企业内部官方供方库或官方导出建立的供应商标准模型。
+  原始官方字段优先保真保存；AI 派生的匹配/资格判断必须与官方字段分离。
+  不得仅凭“出现在某个内部文件中”推断供应商当前有效或具备邀标资格。
+type: object
+additionalProperties: false
+required:
+  - schema_version
+  - source
+  - official_record
+properties:
+  schema_version:
+    type: string
+    const: "0.2.0"
+
+  source:
+    type: object
+    additionalProperties: false
+    required: [source_type, source_file, registry_tier]
+    properties:
+      source_type:
+        type: string
+        const: "official_supplier_registry"
+      source_file:
+        type: string
+      source_sheet:
+        type: [string, "null"]
+      registry_tier:
+        type: string
+        enum:
+          - approved_official_registry
+          - temporary_internal_registry
+          - unknown_internal_registry
+      export_date:
+        type: [string, "null"]
+        format: date
+      authority_note:
+        type: [string, "null"]
+        description: "说明该数据源为何被视为官方来源，以及其可用于何种采购动作。"
+
+  official_record:
+    type: object
+    additionalProperties: false
+    required:
+      - supplier_category
+      - supplier_name
+    properties:
+      sequence_no:
+        type: [integer, "null"]
+      supplier_code:
+        type: [string, "null"]
+        description: "如官方表中的供方编号/纸质版编号。"
+      supplier_category:
+        type: string
+        description: "V1 仅接受物资类进入物资寻源流程。"
+      supplier_classification:
+        type: [string, "null"]
+        description: "如一类/二类/三类。"
+      supplier_name:
+        type: string
+        minLength: 1
+      level_2_type:
+        type: [string, "null"]
+      level_3_type:
+        type: [string, "null"]
+      cooperation_business:
+        type: [string, "null"]
+      region_level:
+        type: [string, "null"]
+      coverage_regions:
+        type: array
+        items:
+          type: string
+      contact_name:
+        type: [string, "null"]
+      contact_phone:
+        type: [string, number, "null"]
+      email:
+        type: [string, "null"]
+      detailed_address:
+        type: [string, "null"]
+      approval_date:
+        type: [string, "null"]
+      registered_capital:
+        type: [number, string, "null"]
+      industry_qualification:
+        type: [string, "null"]
+      qualification_expiry:
+        type: [string, "null"]
+      recommender:
+        type: [string, "null"]
+      project:
+        type: [string, "null"]
+      recommender_contact:
+        type: [string, "null"]
+      remarks:
+        type: [string, "null"]
+      registry_status:
+        type: [string, "null"]
+        description: >-
+          仅当官方数据源明确提供状态字段时填写。当前样本名录未提供明确有效/冻结状态字段，
+          不得将“在库”自动解释为“有效”。
+
+  ai_derived:
+    type: object
+    description: "AI/规则计算结果，不得覆盖或伪装成官方字段。"
+    additionalProperties: false
+    properties:
+      source_eligibility:
+        type: string
+        enum:
+          - allowed_for_candidate_pool
+          - requires_human_confirmation
+          - not_allowed
+      category_match:
+        type: string
+        enum: [exact, compatible, partial, no_match, unknown]
+      region_match:
+        type: string
+        enum: [full, partial, no_match, unknown]
+      qualification_match:
+        type: string
+        enum: [confirmed, not_required, expired, missing, unknown]
+      business_scope_match:
+        type: string
+        enum: [match, partial_match, no_match, unknown]
+      data_completeness:
+        type: string
+        enum: [high, medium, low]
+      hard_gate_result:
+        type: string
+        enum: [eligible_for_review, ineligible, needs_human_check]
+      fit_level:
+        type: string
+        enum: [high, medium, low, unknown]
+      reasons:
+        type: array
+        items:
+          type: string
+      missing_information:
+        type: array
+        items:
+          type: string
+      evidence:
+        type: array
+        items:
+          type: string
+
+  human_review:
+    type: object
+    additionalProperties: false
+    properties:
+      reviewed:
+        type: boolean
+      decision:
+        type: [string, "null"]
+        enum:
+          - include_for_intention_collection
+          - exclude
+          - hold
+          - null
+      reviewer_note:
+        type: [string, "null"]
