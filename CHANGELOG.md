@@ -1,5 +1,16 @@
 # CHANGELOG
 
+## v0.5.1
+
+基于真实订单导出样本验证：
+
+- 新增 `historical-procurement-analysis/references/order-export-field-mapping.md`；
+- 固定订单导出字段与历史采购标准字段的映射；
+- 新增周期完整性 Gate：部分月份/周度数据可汇总，但不得默认年化；
+- SKU 聚合优先使用 `物料编码 + 规格 + 单位`；
+- 增加 `数量 × 单价 ≈ 行级金额` 的一致性检查；
+- 明确真实订单联系人、电话、地址、供应商名称等数据不上传公开/代码示例，仅保留脱敏规则。
+
 ## v0.5.0
 
 新增：
@@ -7,16 +18,15 @@
 - `historical-procurement-analysis/SKILL.md`
 - `historical-procurement.schema.yaml`
 - `historical-procurement-analysis/references/forecast-rules.md`
-- 历史采购分析结构化 Handoff 示例
+- 历史采购预测 Handoff 示例
 
 流程调整：
 
-- 在 `material-requirement-analysis` 前新增“历史采购数据（可选）”前置环节。
-- 有历史采购数据时，先分析历史采购量、金额、单价及采购规模变化，再形成需求数量/金额基线。
-- 无历史采购数据时直接跳过，不影响现有需求分析流程。
-- 需求清单的预计采购量可使用上一完整年度实际采购量，并在有明确业务/采购规模增长依据时按比例测算。
-- 数量增长和价格增长必须拆分，禁止将同一增长率重复计算到预计金额。
-- 新增 `strategy_report_handoff`，为后续采购策略报告提供支出分析、历史趋势、测算依据、异常与风险等事实数据。
+- 历史采购分析作为可选前置步骤；无历史数据项目可直接进入需求分析。
+- 历史实际、AI计算、假设和人工确认必须分开记录。
+- 采购规模增长与价格增长分开计算，禁止重复放大金额。
+- 预测数量只有在历史数量可比且存在明确增长依据时才允许回填需求清单。
+- 历史分析结果同步形成 `strategy_report_handoff`，供后续采购策略报告使用。
 
 ## v0.4.0
 
