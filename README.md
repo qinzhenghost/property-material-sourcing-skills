@@ -1,4 +1,4 @@
-# Property Material Sourcing Skills — v0.5.2
+# Property Material Sourcing Skills — v0.6.0
 
 物业物资类 AI 邀标寻源 Skill 库。
 
@@ -9,20 +9,30 @@
         ↓
 historical-procurement-analysis
         ↓
-初版需求 → AI需求诊断/澄清 → 标准需求
+初版需求 → material-requirement-analysis → 标准需求
         ↓
-官方供方库匹配
+official-supplier-matching
         ↓
 人工确认沟通供方
         ↓
-生成邀标邮件 + 最终需求清单 + 招标意向征集登记表
+sourcing-invitation
         ↓
-汇总供方回复
+邀标邮件 + 最终需求清单 + 招标意向征集登记表
         ↓
-生成供方短名单表
+supplier-shortlist
+        ↓
+供方短名单表
+        ↓
+人工确认短名单
+        ↓
+shortlist-approval
+        ↓
+短名单报批邮件 + strategy_handoff
+        ↓
+sourcing-strategy（下一阶段）
 ```
 
-如果项目没有历史采购数据，可直接跳过 `historical-procurement-analysis`，进入 `material-requirement-analysis`。
+如果项目没有历史采购数据，可直接跳过 `historical-procurement-analysis`。
 
 ## 当前 Skill
 
@@ -32,7 +42,8 @@ skills/
 ├── material-requirement-analysis/
 ├── official-supplier-matching/
 ├── sourcing-invitation/
-└── supplier-shortlist/
+├── supplier-shortlist/
+└── shortlist-approval/
 ```
 
 ## 核心原则
@@ -41,53 +52,24 @@ skills/
 2. 采购制度为邀标制。
 3. 候选供方只能来自企业内部官方供方库或其明确授权的官方导出。
 4. 公网搜索、行业榜单、搜索引擎、第三方企业库不得新增邀标候选供方。
-5. 有历史采购数据时，优先形成可追溯的历史采购基线，再进入需求澄清。
-6. 历史数量预测必须保留：历史基准、增长率来源、计算公式、可信度和人工确认状态。
-7. 采购规模增长与价格增长必须分开计算，禁止重复增加预计金额。
-8. 历史分析结果同时服务：
-   - 需求清单中的预计采购量/预计金额；
-   - 后续采购策略报告中的支出分析、历史趋势和需求测算依据。
-9. 历史数据必须先判断周期完整性；部分月份/周度数据可以做汇总和价格基线，但不得默认年化或直接用于年度需求预测。
-10. 当历史订单覆盖多个区域时，历史数量必须按 `SKU + 区域` 聚合后再映射到需求清单。
-11. 如果需求清单存在同 SKU 重复行但没有显式区域/项目字段，禁止自动回填数量，必须先建立行号与区域的明确映射。
-12. 邀标阶段固定输出：
-   - 邀标/意向征集邮件正文；
-   - 最终确认版需求清单；
-   - 招标意向征集登记表。
-13. 供方回复阶段只做轻量短名单汇总，不做复杂评分或报价模型。
-14. 最终需求数量、候选供方、短名单等关键决策由采购员确认。
+5. 有历史采购数据时，先形成可追溯的历史采购基线，再进入需求澄清。
+6. 历史数量预测必须保留历史基准、增长率来源、计算公式、可信度和人工确认状态。
+7. 历史数据覆盖多个区域时，数量必须按 `SKU + 区域` 聚合。
+8. 邀标阶段固定输出：邀标邮件正文 + 最终需求清单 + 招标意向征集登记表。
+9. 供方回复阶段只做轻量短名单汇总，不做复杂评分或报价模型。
+10. `shortlist-approval` 不重新评价供应商，只基于采购员确认后的短名单生成报批邮件和后续策略 Handoff。
+11. 最终需求数量、候选供方、短名单及审批结论等关键决策由采购员确认。
 
-## v0.5.2
+## v0.6.0
 
-基于米面粮油真实历史订单与现有需求清单联合验证：
+新增 `shortlist-approval`：
 
-- 新增 `historical-procurement-analysis/references/region-quantity-mapping-rules.md`；
-- 历史采购量聚合从单纯 SKU 进一步扩展为 `SKU + 区域`；
-- 新增重复需求行 Gate：同名同规格重复行若未标注区域，不允许 AI 自动回填；
-- 区域优先使用订单导出的 `地址省份 / 地址城市 / 收货地址 / 使用部门`；
-- 部分周期数据只输出 observed baseline，不按天数或月份机械年化；
-- 区域采购结构、SKU支出结构可进入采购策略报告 Handoff。
-
-## v0.5.1
-
-基于真实订单导出样本验证并新增：
-
-- `historical-procurement-analysis/references/order-export-field-mapping.md`
-- 订单编号、订单日期、物料编码、数量、单位、价格、税率、金额、供应商、收货地址等真实字段映射；
-- “部分周期数据不得默认年化”的周期完整性 Gate；
-- SKU 聚合优先使用 `物料编码 + 规格 + 单位`；
-- 行级金额与 `数量 × 单价` 的一致性检查；
-- 真实订单数据仅用于任务分析，仓库只保存脱敏字段规则。
-
-## v0.5.0
-
-新增 `historical-procurement-analysis`：
-
-- 读取历史采购量、金额、单价及采购规模数据；
-- 识别 SKU 可比性、单位/税口径和异常采购；
-- 计算同比采购趋势；
-- 在有明确采购规模增幅时，按可解释公式生成下一周期建议采购量/金额；
-- 生成 `requirement_handoff`，用于回填需求清单数量；
-- 生成 `strategy_report_handoff`，用于后续采购策略报告。
+- 读取采购员确认后的《供方短名单》；
+- 汇总长名单、沟通、回复、入围、不入围和待澄清数量；
+- 生成短名单报批邮件草稿；
+- 保留真实入围/未入围原因；
+- 不重新评分、不改变短名单；
+- 生成 `strategy_handoff`，供后续采购策略报告直接使用；
+- 邮件只生成草稿，不自动发送。
 
 完整项目文件由本仓库持续维护。
