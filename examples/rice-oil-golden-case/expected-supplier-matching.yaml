@@ -1,0 +1,140 @@
+# 黄金案例：米面粮油需求进入官方供方库匹配
+# 注意：这是基于当前上传的重庆供方库样本形成的“候选池示例”，不是最终邀标名单。
+supplier_matching:
+  schema_version: "0.2.0"
+
+  sourcing_policy:
+    supplier_source: official_registry_only
+    public_supplier_discovery_allowed: false
+    human_confirmation_required: true
+
+  requirement_reference:
+    requirement_status: confirmed
+    procurement_domain: property_material
+    project_name: "重庆区域2025-2026年米面粮油物资框架"
+    category_path:
+      level_1: "物资类"
+      level_2: "食品饮品"
+      level_3: "米面粮油"
+      evidence: "企业《物资类供应商三级分类表》"
+    delivery_regions:
+      - "重庆市"
+      - "贵州省"
+
+  search_scope:
+    official_sources_used:
+      - source_file: "重庆市物资类供应商名录.xlsx"
+        source_sheet: "Sheet1"
+        registry_tier: approved_official_registry
+      - source_file: "重庆市物资类供应商名录.xlsx"
+        source_sheet: "万科物业临时供应商"
+        registry_tier: temporary_internal_registry
+    searched_category_terms:
+      - "食品饮品"
+      - "米面粮油"
+    normalized_delivery_regions:
+      - "重庆市"
+      - "贵州省"
+    limitations:
+      - "当前主样本是重庆区域供方名录，不能证明其覆盖贵州官方供方资源。"
+      - "主名录未提供统一明确的有效/冻结/禁用状态字段。"
+
+  candidate_summary:
+    category_matches: 9
+    full_region_matches: 0
+    partial_region_matches: 9
+    needs_human_check: 9
+
+  example_candidates:
+    - supplier_name: "大汉三通电子商务有限公司"
+      supplier_id: "CQ-WZ-VS-080"
+      official_category:
+        level_2_type: "电器百货/文体宣传/食品饮品"
+        level_3_type: "生活小家电、礼品定制、米面粮油"
+      official_coverage_regions: ["重庆"]
+      category_result: compatible
+      region_result: partial
+      registry_status: unknown
+      recommended_action: include_for_human_review
+
+    - supplier_name: "重庆旋艺商贸有限公司"
+      supplier_id: "CQ-WZ-VS-144"
+      official_category:
+        level_2_type: "食品饮品"
+        level_3_type: "米面粮油、生活小家电"
+      official_coverage_regions: ["重庆"]
+      category_result: exact
+      region_result: partial
+      registry_status: unknown
+      recommended_action: include_for_human_review
+
+    - supplier_name: "重庆东强粮油食品有限公司"
+      supplier_id: "CQ-WZ-VS-147"
+      official_category:
+        level_2_type: "食品饮品"
+        level_3_type: "米面粮油"
+      official_coverage_regions: ["重庆"]
+      category_result: exact
+      region_result: partial
+      registry_status: unknown
+      recommended_action: include_for_human_review
+
+    - supplier_name: "重庆海馨果商贸有限公司"
+      supplier_id: "CQ-WZ-VS-149"
+      official_category:
+        level_2_type: "食品饮品"
+        level_3_type: "米面粮油"
+      official_coverage_regions: ["重庆"]
+      category_result: exact
+      region_result: partial
+      registry_status: unknown
+      recommended_action: include_for_human_review
+
+    - supplier_name: "重庆商社新世纪百货连锁经营有限公司"
+      supplier_id: "CQ-WZ-VS-205"
+      official_category:
+        level_2_type: "食品饮品"
+        level_3_type: "米面粮油"
+      official_coverage_regions: ["重庆"]
+      category_result: exact
+      region_result: partial
+      registry_status: unknown
+      recommended_action: include_for_human_review
+
+    - supplier_name: "英芮达（重庆）商贸有限公司"
+      supplier_id: "CQ-WZ-VS-227"
+      official_category:
+        level_2_type: "文体宣传/食品饮品"
+        level_3_type: "节庆饰品,礼品定制,米面粮油"
+      official_coverage_regions: ["重庆"]
+      category_result: compatible
+      region_result: partial
+      registry_status: unknown
+      recommended_action: include_for_human_review
+
+    - supplier_name: "重庆哈鑫康业食品有限公司"
+      supplier_id: "CQ-WZ-VS-228"
+      official_category:
+        level_2_type: "食品饮品"
+        level_3_type: "米面粮油"
+      official_coverage_regions: ["重庆"]
+      category_result: exact
+      region_result: partial
+      registry_status: unknown
+      recommended_action: include_for_human_review
+
+  coverage_gap:
+    code: official_registry_coverage_gap
+    description: >-
+      当前样本中米面粮油候选供方官方覆盖字段仅能确认重庆，
+      无法从当前官方数据证明可完整覆盖贵州省。
+    required_action:
+      - "追加贵州或区域级官方供应商库；或"
+      - "由采购员基于企业官方系统补充覆盖区域证据；或"
+      - "由采购员决定是否按区域拆分寻源。"
+
+  human_checkpoint:
+    status: pending
+    allowed_next_action: review_candidate_pool
+    notes:
+      - "当前结果只用于采购员审核，不得直接发送邀标。"
