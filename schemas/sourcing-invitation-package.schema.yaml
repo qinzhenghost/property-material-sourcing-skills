@@ -1,0 +1,98 @@
+$schema: "https://json-schema.org/draft/2020-12/schema"
+$id: "https://example.local/schemas/property-material-sourcing-invitation-package.schema.yaml"
+title: "物业物资邀标沟通三件套"
+description: >-
+  official-supplier-matching 经人工确认后，由 sourcing-invitation 生成的标准输出包。
+  仅包含三个产出物：邀标邮件正文、最终需求清单、招标意向征集登记表。
+type: object
+additionalProperties: false
+required:
+  - schema_version
+  - project
+  - recipients
+  - artifacts
+  - consistency_check
+properties:
+  schema_version:
+    type: string
+    const: "0.3.0"
+  project:
+    type: object
+    additionalProperties: false
+    required: [project_name, procurement_domain, delivery_regions]
+    properties:
+      project_name: {type: string}
+      procurement_domain: {type: string, const: property_material}
+      delivery_regions:
+        type: array
+        minItems: 1
+        items: {type: string}
+      cooperation_period: {type: [string, "null"]}
+      payment_terms: {type: [string, "null"]}
+      quotation_basis: {type: [string, "null"]}
+      contact_name: {type: [string, "null"]}
+      contact_phone: {type: [string, "null"]}
+      contact_email: {type: [string, "null"]}
+      response_deadline: {type: [string, "null"]}
+  recipients:
+    type: array
+    minItems: 1
+    items:
+      type: object
+      additionalProperties: false
+      required: [supplier_name, source]
+      properties:
+        supplier_id: {type: [string, "null"]}
+        supplier_name: {type: string}
+        contact_name: {type: [string, "null"]}
+        contact_email: {type: [string, "null"]}
+        source: {type: string, const: official_registry}
+  artifacts:
+    type: object
+    additionalProperties: false
+    required: [invitation_email, requirement_list, supplier_intention_form]
+    properties:
+      invitation_email:
+        type: object
+        additionalProperties: false
+        required: [format, template, status]
+        properties:
+          format: {type: string, const: markdown_or_email_body}
+          template: {type: string}
+          status: {type: string, enum: [generated, blocked]}
+      requirement_list:
+        type: object
+        additionalProperties: false
+        required: [format, source, status]
+        properties:
+          format: {type: string, const: xlsx}
+          source: {type: string, const: confirmed_requirement}
+          status: {type: string, enum: [generated, blocked]}
+      supplier_intention_form:
+        type: object
+        additionalProperties: false
+        required: [format, template, status]
+        properties:
+          format: {type: string, const: xlsx}
+          template: {type: string}
+          status: {type: string, enum: [generated, blocked]}
+  consistency_check:
+    type: object
+    additionalProperties: false
+    required: [passed, checked_fields]
+    properties:
+      passed: {type: boolean}
+      checked_fields:
+        type: array
+        items: {type: string}
+      issues:
+        type: array
+        items: {type: string}
+  human_checkpoint:
+    type: object
+    additionalProperties: false
+    properties:
+      status: {type: string, enum: [pending_send_review, approved_to_send]}
+      notes:
+        type: array
+        items: {type: string}
