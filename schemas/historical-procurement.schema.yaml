@@ -1,0 +1,254 @@
+$schema: "https://json-schema.org/draft/2020-12/schema"
+$id: "https://example.local/schemas/historical-procurement.schema.yaml"
+title: "物业物资历史采购分析"
+description: >-
+  用于把历史采购数量、采购金额、单价、采购规模及其同比变化转换为可追溯的需求数量/金额基线，
+  并向标准需求清单和采购策略报告提供结构化 Handoff。不得在缺乏历史数据或明确业务规模依据时
+  自行制造增长率、采购量或采购金额。
+type: object
+additionalProperties: false
+required:
+  - schema_version
+  - procurement_domain
+  - source
+  - analysis_scope
+  - historical_records
+  - projection
+  - requirement_handoff
+  - strategy_report_handoff
+properties:
+  schema_version:
+    type: string
+    const: "0.5.0"
+  procurement_domain:
+    type: string
+    const: "property_material"
+  source:
+    type: object
+    additionalProperties: false
+    required: [source_files]
+    properties:
+      source_files:
+        type: array
+        minItems: 1
+        items: {type: string}
+      data_owner: {type: [string, "null"]}
+      data_period:
+        type: array
+        items: {type: string}
+      source_quality:
+        type: string
+        enum: [high, medium, low, unknown]
+      notes:
+        type: array
+        items: {type: string}
+  analysis_scope:
+    type: object
+    additionalProperties: false
+    properties:
+      project_name: {type: [string, "null"]}
+      category_path:
+        type: object
+        additionalProperties: false
+        properties:
+          level_1: {type: [string, "null"]}
+          level_2: {type: [string, "null"]}
+          level_3: {type: [string, "null"]}
+      regions:
+        type: array
+        items: {type: string}
+      baseline_period: {type: [string, "null"]}
+      target_period: {type: [string, "null"]}
+  historical_records:
+    type: array
+    minItems: 1
+    items: {$ref: "#/$defs/historical_record"}
+  scale_analysis:
+    type: object
+    additionalProperties: false
+    properties:
+      previous_period: {type: [string, "null"]}
+      current_or_target_period: {type: [string, "null"]}
+      previous_scale: {type: [number, "null"]}
+      current_or_target_scale: {type: [number, "null"]}
+      scale_unit: {type: [string, "null"], description: "如项目数、管理面积、服务户数、采购点位数等。"}
+      yoy_growth_rate: {type: [number, "null"], description: "小数表示，例如 0.08 表示增长 8%。"}
+      growth_basis:
+        type: string
+        enum: [official_business_plan, official_scale_data, user_confirmed_assumption, historical_trend_only, unavailable]
+      evidence:
+        type: array
+        items: {type: string}
+  projection:
+    type: object
+    additionalProperties: false
+    required: [method, item_projections]
+    properties:
+      method:
+        type: string
+        enum: [quantity_driven, amount_only, no_projection]
+      scale_growth_applied: {type: boolean}
+      scale_growth_rate_used: {type: [number, "null"]}
+      price_growth_rate_used: {type: [number, "null"]}
+      price_growth_basis:
+        type: string
+        enum: [historical_average, latest_actual, user_confirmed, external_benchmark, none]
+      item_projections:
+        type: array
+        items: {$ref: "#/$defs/item_projection"}
+      projected_total_amount: {type: [number, "null"]}
+      currency: {type: string, default: "CNY"}
+      confidence:
+        type: string
+        enum: [high, medium, low]
+      confidence_reasons:
+        type: array
+        items: {type: string}
+      warnings:
+        type: array
+        items: {type: string}
+  requirement_handoff:
+    type: object
+    additionalProperties: false
+    required: [quantity_updates]
+    properties:
+      quantity_updates:
+        type: array
+        items:
+          type: object
+          additionalProperties: false
+          required: [item_key, quantity_source, suggested_estimated_quantity, evidence]
+          properties:
+            item_key: {type: string}
+            quantity_source:
+              type: string
+              enum: [historical_actual, historical_projected, manual_adjustment]
+            baseline_quantity: {type: [number, "null"]}
+            baseline_period: {type: [string, "null"]}
+            growth_rate_applied: {type: [number, "null"]}
+            suggested_estimated_quantity: {type: number, minimum: 0}
+            unit: {type: [string, "null"]}
+            suggested_estimated_amount: {type: [number, "null"]}
+            amount_basis: {type: [string, "null"]}
+            confidence:
+              type: string
+              enum: [high, medium, low]
+            evidence:
+              type: array
+              minItems: 1
+              items: {type: string}
+            human_confirmation_status:
+              type: string
+              enum: [pending, confirmed, adjusted]
+      project_level_updates:
+        type: object
+        additionalProperties: false
+        properties:
+          projected_total_amount: {type: [number, "null"]}
+          projection_basis: {type: [string, "null"]}
+          growth_rate: {type: [number, "null"]}
+          notes:
+            type: array
+            items: {type: string}
+  strategy_report_handoff:
+    type: object
+    additionalProperties: false
+    properties:
+      spend_analysis:
+        type: array
+        items:
+          type: object
+          additionalProperties: false
+          properties:
+            period: {type: string}
+            total_quantity: {type: [number, "null"]}
+            total_amount: {type: [number, "null"]}
+            yoy_quantity_change: {type: [number, "null"]}
+            yoy_amount_change: {type: [number, "null"]}
+      price_analysis:
+        type: array
+        items: {type: string}
+      demand_projection_basis:
+        type: array
+        items: {type: string}
+      key_findings:
+        type: array
+        items: {type: string}
+      concentration_findings:
+        type: array
+        items: {type: string}
+      risk_flags:
+        type: array
+        items: {type: string}
+      report_ready_facts:
+        type: array
+        description: "可直接进入采购策略报告的事实句；每条都必须能追溯到数据源。"
+        items:
+          type: object
+          additionalProperties: false
+          required: [fact, evidence]
+          properties:
+            fact: {type: string}
+            evidence:
+              type: array
+              minItems: 1
+              items: {type: string}
+  human_review:
+    type: object
+    additionalProperties: false
+    properties:
+      projection_reviewed: {type: boolean}
+      quantity_updates_confirmed: {type: boolean}
+      reviewer_notes:
+        type: array
+        items: {type: string}
+$defs:
+  historical_record:
+    type: object
+    additionalProperties: false
+    required: [period, item_key, item_name, unit]
+    properties:
+      period: {type: string}
+      item_key: {type: string, description: "用于跨年度识别同一 SKU 的稳定键；应基于名称+品牌+规格+单位等字段形成。"}
+      item_name: {type: string}
+      brand: {type: [string, "null"]}
+      specification: {type: [string, "null"]}
+      unit: {type: string}
+      region: {type: [string, "null"]}
+      project: {type: [string, "null"]}
+      supplier: {type: [string, "null"]}
+      actual_quantity: {type: [number, "null"], minimum: 0}
+      actual_amount: {type: [number, "null"], minimum: 0}
+      average_unit_price: {type: [number, "null"], minimum: 0}
+      tax_basis:
+        type: [string, "null"]
+        enum: [tax_included, pre_tax, mixed, unknown, null]
+      source_row_reference: {type: [string, "null"]}
+      anomaly_flag: {type: boolean, default: false}
+      anomaly_reason: {type: [string, "null"]}
+  item_projection:
+    type: object
+    additionalProperties: false
+    required: [item_key, baseline_period, unit, projection_method]
+    properties:
+      item_key: {type: string}
+      baseline_period: {type: string}
+      baseline_quantity: {type: [number, "null"], minimum: 0}
+      unit: {type: string}
+      scale_growth_rate: {type: [number, "null"]}
+      manual_quantity_adjustment_rate: {type: [number, "null"]}
+      projected_quantity: {type: [number, "null"], minimum: 0}
+      baseline_unit_price: {type: [number, "null"], minimum: 0}
+      price_growth_rate: {type: [number, "null"]}
+      projected_unit_price: {type: [number, "null"], minimum: 0}
+      baseline_amount: {type: [number, "null"], minimum: 0}
+      projected_amount: {type: [number, "null"], minimum: 0}
+      projection_method:
+        type: string
+        enum: [last_full_year_actual, multi_year_average, last_full_year_adjusted_by_scale, amount_only_adjusted_by_scale, user_confirmed_override, no_reliable_projection]
+      evidence:
+        type: array
+        items: {type: string}
+      notes:
+        type: array
+        items: {type: string}

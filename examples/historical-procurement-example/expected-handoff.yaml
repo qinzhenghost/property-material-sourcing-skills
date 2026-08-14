@@ -1,0 +1,125 @@
+# 仅用于验证公式和 Handoff 结构，不代表真实项目数据。
+historical_procurement_analysis:
+  schema_version: "0.5.0"
+  procurement_domain: property_material
+
+  source:
+    source_files:
+      - "示例历史采购数据.xlsx"
+    data_period:
+      - "2025"
+    source_quality: medium
+    notes:
+      - "本文件仅为结构示例。"
+
+  analysis_scope:
+    project_name: "示例物资续采项目"
+    baseline_period: "2025"
+    target_period: "2026"
+
+  historical_records:
+    - period: "2025"
+      item_key: "SKU-A|品牌A|5L|桶"
+      item_name: "示例物资A"
+      brand: "品牌A"
+      specification: "5L"
+      unit: "桶"
+      actual_quantity: 10000
+      actual_amount: 500000
+      average_unit_price: 50
+      tax_basis: tax_included
+      anomaly_flag: false
+
+  scale_analysis:
+    previous_period: "2025"
+    current_or_target_period: "2026"
+    previous_scale: 100
+    current_or_target_scale: 108
+    scale_unit: "项目数指数"
+    yoy_growth_rate: 0.08
+    growth_basis: user_confirmed_assumption
+    evidence:
+      - "采购员确认2026年度采购规模较2025年度增长8%。"
+
+  projection:
+    method: quantity_driven
+    scale_growth_applied: true
+    scale_growth_rate_used: 0.08
+    price_growth_rate_used: 0
+    price_growth_basis: latest_actual
+    item_projections:
+      - item_key: "SKU-A|品牌A|5L|桶"
+        baseline_period: "2025"
+        baseline_quantity: 10000
+        unit: "桶"
+        scale_growth_rate: 0.08
+        projected_quantity: 10800
+        baseline_unit_price: 50
+        price_growth_rate: 0
+        projected_unit_price: 50
+        baseline_amount: 500000
+        projected_amount: 540000
+        projection_method: last_full_year_adjusted_by_scale
+        evidence:
+          - "2025实际采购量10000桶。"
+          - "2026采购规模同比增长8%。"
+        notes: []
+    projected_total_amount: 540000
+    currency: CNY
+    confidence: medium
+    confidence_reasons:
+      - "仅有一个完整年度历史数据。"
+      - "规模增幅已由采购员确认。"
+    warnings: []
+
+  requirement_handoff:
+    quantity_updates:
+      - item_key: "SKU-A|品牌A|5L|桶"
+        quantity_source: historical_projected
+        baseline_quantity: 10000
+        baseline_period: "2025"
+        growth_rate_applied: 0.08
+        suggested_estimated_quantity: 10800
+        unit: "桶"
+        suggested_estimated_amount: 540000
+        amount_basis: "10800桶 × 50元/桶"
+        confidence: medium
+        evidence:
+          - "2025实际采购量10000桶。"
+          - "2026规模增长率8%。"
+        human_confirmation_status: pending
+    project_level_updates:
+      projected_total_amount: 540000
+      projection_basis: "上一完整年度实际量按采购规模增长8%测算"
+      growth_rate: 0.08
+      notes: []
+
+  strategy_report_handoff:
+    spend_analysis:
+      - period: "2025"
+        total_quantity: 10000
+        total_amount: 500000
+        yoy_quantity_change: null
+        yoy_amount_change: null
+    price_analysis:
+      - "2025平均含税单价50元/桶。"
+    demand_projection_basis:
+      - "2026采购规模较2025同比预计增长8%。"
+      - "预计采购量按2025实际量上浮8%测算。"
+    key_findings:
+      - "示例SKU 2026预计采购量为10800桶。"
+    concentration_findings: []
+    risk_flags:
+      - "当前仅有一个完整年度历史数据，预测可信度为中。"
+    report_ready_facts:
+      - fact: "2025年度示例SKU实际采购量为10000桶，采购金额为50万元。"
+        evidence:
+          - "示例历史采购数据.xlsx"
+      - fact: "结合2026年度采购规模同比增长8%的假设，预计采购量为10800桶。"
+        evidence:
+          - "采购员确认2026年度采购规模增长8%。"
+
+  human_review:
+    projection_reviewed: false
+    quantity_updates_confirmed: false
+    reviewer_notes: []

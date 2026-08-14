@@ -1,5 +1,23 @@
 # CHANGELOG
 
+## v0.5.0
+
+新增：
+
+- `historical-procurement-analysis/SKILL.md`
+- `historical-procurement.schema.yaml`
+- `historical-procurement-analysis/references/forecast-rules.md`
+- 历史采购分析结构化 Handoff 示例
+
+流程调整：
+
+- 在 `material-requirement-analysis` 前新增“历史采购数据（可选）”前置环节。
+- 有历史采购数据时，先分析历史采购量、金额、单价及采购规模变化，再形成需求数量/金额基线。
+- 无历史采购数据时直接跳过，不影响现有需求分析流程。
+- 需求清单的预计采购量可使用上一完整年度实际采购量，并在有明确业务/采购规模增长依据时按比例测算。
+- 数量增长和价格增长必须拆分，禁止将同一增长率重复计算到预计金额。
+- 新增 `strategy_report_handoff`，为后续采购策略报告提供支出分析、历史趋势、测算依据、异常与风险等事实数据。
+
 ## v0.4.0
 
 新增：
