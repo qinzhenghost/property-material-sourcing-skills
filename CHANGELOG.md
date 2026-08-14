@@ -1,5 +1,16 @@
 # CHANGELOG
 
+## v0.5.2
+
+基于米面粮油真实历史订单与现有需求清单联合验证：
+
+- 新增 `historical-procurement-analysis/references/region-quantity-mapping-rules.md`；
+- 历史采购量聚合从单纯 SKU 扩展为 `SKU + 区域`；
+- 新增重复需求行 Gate：同名同规格重复行如果没有显式区域/项目字段，禁止自动回填数量；
+- 区域识别优先使用订单导出的 `地址省份 / 地址城市 / 收货地址 / 使用部门`；
+- 部分周期历史数据只作为 observed baseline，不允许按天数/月数机械年化；
+- 区域采购结构、SKU支出结构进入后续采购策略报告 Handoff。
+
 ## v0.5.1
 
 基于真实订单导出样本验证：
