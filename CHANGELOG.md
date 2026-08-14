@@ -1,5 +1,26 @@
 # CHANGELOG
 
+## v0.7.0
+
+新增：
+
+- `sourcing-strategy/SKILL.md`
+- `sourcing-strategy.schema.yaml`
+- `sourcing-strategy/references/procurement-plan-template-mapping.md`
+- `sourcing-strategy/references/market-intelligence-policy.md`
+- `sourcing-strategy/templates/物资采购方案报告模板.docx`
+- 采购策略数据示例
+
+流程调整：
+
+- `shortlist-approval` 完成后进入 `sourcing-strategy`。
+- 采购方案报告不从空白重新创作，而是汇总历史采购、最终需求、官方供方资源、最终短名单和当前采购规则。
+- 历史采购分析优先进入“需求背景、支出分析、目标价格依据、风险”等字段。
+- 公开市场资料只可用于市场行情、成本驱动、价格趋势和政策分析，不得用于新增候选供方。
+- 模板中的示例值（投标保证金比例、履约保证金比例、降本3%/5%、交期X日等）不得自动继承。
+- 新增 quantity / budget / region / shortlist / commercial terms / award rule 一致性 Gate。
+- 关键决策未确认时只生成 `draft`，不得标记 `ready_for_approval`。
+
 ## v0.6.0
 
 新增：

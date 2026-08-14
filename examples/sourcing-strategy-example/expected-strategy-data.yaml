@@ -1,0 +1,153 @@
+schema_version: "0.7.0"
+report_status: draft
+
+project:
+  project_name: "重庆区域2025-2026年米面粮油物资框架"
+  procurement_method: invitation_tender
+  demand_time: null
+  procurement_period: "1年"
+  budget_amount: null
+  budget_tax_basis: unknown
+  budget_source:
+    state: MISSING
+    source: null
+    evidence: "当前示例未确认正式采购预算"
+    confidence: unknown
+
+demand_background:
+  summary: "重庆、贵州区域米面粮油框架采购。"
+  usage_scenarios: []
+  delivery_regions:
+    - 重庆市
+    - 贵州省
+  original_contract_expiry: null
+  historical_findings:
+    - "已存在历史订单数据，可用于SKU、区域和历史价格分析。"
+    - "当前已验证的历史样本为部分周期，不能直接作为年度需求预测。"
+  demand_growth_basis: null
+
+scope_and_lots:
+  sku_count: 18
+  estimated_total_quantity: 26941
+  lot_count: 1
+  lot_description:
+    - "示例暂按单标段表达，最终以采购员确认方案为准。"
+  quantity_source:
+    state: FACT
+    source: "最终需求清单"
+    evidence: "18行年度预计采购量合计"
+    confidence: high
+
+spend_analysis:
+  historical_period: "部分周期样本"
+  historical_tax_included_spend: null
+  historical_pre_tax_spend: null
+  projected_spend: null
+  yoy_change_rate: null
+  region_findings:
+    - "历史订单同时覆盖重庆、贵州，应按SKU+区域分析。"
+  sku_findings: []
+  price_findings:
+    - "历史订单可形成短周期成交价基线。"
+  data_limitations:
+    - "历史数据不是完整年度，禁止机械年化。"
+
+market_analysis:
+  market_characteristics: []
+  cost_drivers: []
+  price_trends: []
+  regulatory_factors: []
+  sourcing_implications: []
+  sources: []
+
+shortlist:
+  official_registry_candidates: null
+  contacted_suppliers: null
+  replied_suppliers: null
+  shortlisted_count: null
+  shortlisted_suppliers: []
+  evidence:
+    state: MISSING
+    source: null
+    evidence: "等待最终短名单确认"
+    confidence: unknown
+
+commercial_terms:
+  delivery_lead_time: null
+  warranty: "按合同/需求约定"
+  payment_terms: "收货确认后120个自然日内付款；具体以最终项目条件为准"
+  contract_period: "1年"
+  tax_terms: "报价需包含含税价、未税价及税率"
+  bid_bond: null
+  performance_bond: null
+
+supplier_selection:
+  method: "商务标价格评审规则待最终确认"
+  technical_bid_required: null
+  commercial_weight: null
+  description: null
+  human_confirmed: false
+
+target_price:
+  basis:
+    - "历史成交价（如数据完整可用）"
+  basic_target: null
+  challenge_target: null
+  human_confirmed: false
+
+award_rule:
+  award_supplier_count: 1
+  backup_supplier_count: null
+  ranking_basis: "当前需求材料显示拟按未税总价排名，需采购员最终确认"
+  tie_rule: null
+  backup_activation_rule: null
+  human_confirmed: false
+
+share_allocation:
+  applicable: false
+  description: "若最终确定1家中标供应商，则无份额划分。"
+  human_confirmed: false
+
+risks:
+  - risk: "历史需求预测数据周期不完整"
+    evidence: "当前历史订单样本不是完整年度"
+    impact: "不能直接据此推导年度采购量和预算"
+    mitigation: "补充完整年度/可比同期数据，或由采购员确认年度数量"
+    human_confirmation_required: true
+
+evaluation_team:
+  members: []
+  status: pending
+  source:
+    state: MISSING
+    source: null
+    evidence: "尚未提供当前项目评标小组"
+    confidence: unknown
+
+consistency_checks:
+  quantity_consistent: true
+  budget_consistent: false
+  region_consistent: true
+  shortlist_consistent: false
+  commercial_terms_consistent: true
+  award_rule_consistent: false
+  blockers:
+    - "预算未确认"
+    - "最终短名单未确认"
+    - "定标规则未最终确认"
+    - "评标小组未确认"
+
+missing_items:
+  - "正式预算金额及税口径"
+  - "最终短名单"
+  - "目标价格/降本目标"
+  - "保证金"
+  - "最终定标规则"
+  - "评标小组"
+
+human_decisions_required:
+  - "预算"
+  - "保证金"
+  - "定标规则"
+  - "目标价格"
+  - "评标小组"
