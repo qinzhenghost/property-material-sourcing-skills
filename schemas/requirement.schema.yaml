@@ -1,0 +1,280 @@
+$schema: "https://json-schema.org/draft/2020-12/schema"
+$id: "https://example.local/schemas/property-material-requirement.schema.yaml"
+title: "物业物资采购标准需求"
+description: >-
+  用于把初版采购需求、澄清结果和最终标准需求统一为结构化对象。
+  本 Schema 区分采购方已确认的需求字段与供方待填写的报价响应字段，避免将空白报价字段误判为需求遗漏。
+type: object
+additionalProperties: false
+required:
+  - schema_version
+  - procurement_domain
+  - sourcing_method
+  - source
+  - project
+  - items
+properties:
+  schema_version:
+    type: string
+    const: "0.1.0"
+
+  procurement_domain:
+    type: string
+    const: "property_material"
+
+  sourcing_method:
+    type: string
+    const: "invitation_tender"
+
+  source:
+    type: object
+    additionalProperties: false
+    required: [source_files, document_role]
+    properties:
+      source_files:
+        type: array
+        minItems: 1
+        items:
+          type: string
+      document_role:
+        type: string
+        enum:
+          - initial_requirement
+          - clarified_requirement
+          - standard_requirement
+          - quotation_template
+      version_label:
+        type: [string, "null"]
+      notes:
+        type: [string, "null"]
+
+  project:
+    type: object
+    additionalProperties: false
+    properties:
+      project_name:
+        type: [string, "null"]
+      procurement_period:
+        type: [string, "null"]
+      category_path:
+        type: object
+        additionalProperties: false
+        properties:
+          level_1:
+            type: [string, "null"]
+            description: "一级分类，优先来自企业官方物资三级分类表。"
+          level_2:
+            type: [string, "null"]
+          level_3:
+            type: [string, "null"]
+          category_evidence:
+            type: [string, "null"]
+            description: "分类来源或匹配依据；不得把 AI 猜测写成官方分类事实。"
+      delivery_regions:
+        type: array
+        items:
+          type: string
+        uniqueItems: true
+      delivery_locations:
+        type: array
+        items:
+          type: string
+        uniqueItems: true
+      quotation_basis:
+        type: object
+        additionalProperties: false
+        properties:
+          comprehensive_quote:
+            type: [boolean, "null"]
+          tax_included:
+            type: [boolean, "null"]
+          freight_included:
+            type: [boolean, "null"]
+          other_inclusions:
+            type: array
+            items:
+              type: string
+      forecast_quantity_is_nonbinding:
+        type: [boolean, "null"]
+      ordering_channel:
+        type: [string, "null"]
+        description: "如企业采购平台；仅在需求中明确时填写。"
+      contract_period:
+        type: object
+        additionalProperties: false
+        properties:
+          value:
+            type: [number, "null"]
+            minimum: 0
+          unit:
+            type: [string, "null"]
+            enum: [day, month, year, null]
+      payment_terms:
+        type: object
+        additionalProperties: false
+        properties:
+          total_days:
+            type: [integer, "null"]
+            minimum: 0
+          reconciliation_days:
+            type: [integer, "null"]
+            minimum: 0
+          invoice_days:
+            type: [integer, "null"]
+            minimum: 0
+          settlement_days:
+            type: [integer, "null"]
+            minimum: 0
+          payment_trigger:
+            type: [string, "null"]
+      evaluation_rule:
+        type: object
+        additionalProperties: false
+        properties:
+          basis:
+            type: [string, "null"]
+            enum:
+              - pre_tax_total_price
+              - tax_included_total_price
+              - comprehensive_evaluation
+              - other
+              - null
+          description:
+            type: [string, "null"]
+          planned_award_supplier_count:
+            type: [integer, "null"]
+            minimum: 1
+      bid_contact:
+        type: object
+        additionalProperties: false
+        properties:
+          name:
+            type: [string, "null"]
+          phone:
+            type: [string, "null"]
+      project_notes:
+        type: array
+        items:
+          type: string
+
+  items:
+    type: array
+    minItems: 1
+    items:
+      $ref: "#/$defs/material_item"
+
+  supplier_response_fields:
+    type: array
+    description: >-
+      供方在报价/回标阶段填写的字段。字段为空不等于采购需求缺失。
+      例如含税单价、未税单价、税率、报价总价、报价单位联系人等。
+    items:
+      type: string
+    uniqueItems: true
+
+  clarification:
+    type: object
+    additionalProperties: false
+    properties:
+      status:
+        type: string
+        enum: [not_started, pending, partially_clarified, confirmed]
+      unresolved_blockers:
+        type: array
+        items:
+          type: string
+      assumptions:
+        type: array
+        items:
+          type: string
+      confirmed_by_human:
+        type: [boolean, "null"]
+
+$defs:
+  material_item:
+    type: object
+    additionalProperties: false
+    required:
+      - line_id
+      - item_name
+      - unit
+      - estimated_quantity
+    properties:
+      line_id:
+        type: [string, integer]
+      item_name:
+        type: string
+        minLength: 1
+      brand:
+        type: [string, "null"]
+        description: "只有在采购方明确品牌要求时才作为事实写入；不得由 AI 自动补品牌。"
+      brand_requirement_mode:
+        type: string
+        enum: [specified, optional, equivalent_allowed, unspecified]
+        default: unspecified
+      specification:
+        type: [string, "null"]
+      model:
+        type: [string, "null"]
+      material:
+        type: [string, "null"]
+      size:
+        type: [string, "null"]
+      capacity:
+        type: [string, "null"]
+      package_specification:
+        type: [string, "null"]
+      unit:
+        type: string
+        minLength: 1
+      minimum_order_quantity:
+        type: [number, "null"]
+        minimum: 0
+      estimated_quantity:
+        type: number
+        minimum: 0
+      quantity_period:
+        type: [string, "null"]
+        enum: [one_time, monthly, annual, contract_period, other, null]
+      quantity_by_region:
+        type: array
+        description: >-
+          当同一 SKU 因城市/区域存在不同数量、价格或交付条件时必须显式拆分。
+        items:
+          type: object
+          additionalProperties: false
+          required: [region, quantity]
+          properties:
+            region:
+              type: string
+            quantity:
+              type: number
+              minimum: 0
+      technical_attributes:
+        type: object
+        additionalProperties:
+          type: [string, number, boolean, "null"]
+      quality_standard:
+        type: [string, "null"]
+      required_certifications:
+        type: array
+        items:
+          type: string
+      sample_required:
+        type: [boolean, "null"]
+      substitution_policy:
+        type: [string, "null"]
+        enum: [not_allowed, equivalent_allowed, approval_required, unspecified, null]
+      delivery_requirement:
+        type: [string, "null"]
+      warranty_requirement:
+        type: [string, "null"]
+      acceptance_criteria:
+        type: [string, "null"]
+      remarks:
+        type: [string, "null"]
+      hidden_dimension_flags:
+        type: array
+        description: "用于标记重复行可能隐藏的区域、项目、规格、包装、品牌等区分维度。"
+        items:
+          type: string
