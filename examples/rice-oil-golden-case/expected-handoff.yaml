@@ -1,0 +1,49 @@
+# 这是黄金案例在“人工完成所有必要澄清后”的示例 handoff。
+# 不是对当前上传文件自动宣称已确认。
+handoff:
+  workflow_stage: requirement_confirmed
+  procurement_domain: property_material
+  sourcing_method: invitation_tender
+  requirement_status: confirmed
+
+  project:
+    project_name: "重庆区域2025-2026年米面粮油物资框架"
+    delivery_regions:
+      - 重庆市
+      - 贵州省
+    quotation_basis:
+      comprehensive_quote: true
+      tax_included: true
+      freight_included: true
+    forecast_quantity_is_nonbinding: true
+    contract_period:
+      value: 1
+      unit: year
+    payment_terms:
+      total_days: 120
+      reconciliation_days: 5
+      invoice_days: 10
+      settlement_days: 105
+    evaluation_rule:
+      basis: pre_tax_total_price
+      description: "未税总价最低拟中选（排名）"
+      planned_award_supplier_count: 1
+
+  item_count: 18
+  category_path:
+    level_1: 物资类
+    level_2: null
+    level_3: null
+    status: human_or_official_taxonomy_confirmation_required
+
+  unresolved_items: []
+  assumptions: []
+
+  source_policy:
+    next_stage_supplier_source: official_supplier_registry_only
+
+  human_decision:
+    confirmed: true
+    note: "示例要求：区域/重复SKU拆分等关键问题已由采购员确认。"
+
+  next_skill: official-supplier-matching
