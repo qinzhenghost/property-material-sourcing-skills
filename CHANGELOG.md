@@ -1,5 +1,22 @@
 # CHANGELOG
 
+## v0.7.3
+
+`historical-procurement-analysis` 升级为 `0.5.4`：
+
+- 新增强制 `Agreement Selection Gate`；
+- 自动识别 `协议编号 / 协议号 / 合同编号 / 合同号 / 框架协议编号 / 采购协议编号` 等字段；
+- 先列出全部唯一协议及其原始订单数、有效订单数、有效明细行、数据期间、SKU数、有效采购金额和区域；
+- 用户必须明确选择一个或多个协议编号后才能进入正式历史分析；
+- 即使只有一个协议编号，也不能自动跳过确认；
+- 禁止默认选择最新协议、金额最大协议或全部协议；
+- 多协议分析时保留 `agreement_number` 维度，先分别统计再合并；
+- 无协议编号订单默认排除，仅在用户明确确认后允许纳入；
+- `requirement_handoff` 和 `strategy_report_handoff` 增加所选协议范围；
+- `historical-procurement.schema.yaml` 升级至 `0.5.4`；
+- 新增 `references/agreement-selection-rules.md`；
+- 重写主 `SKILL.md` 为标准 UTF-8，修复历史 Git Blob 编码异常。
+
 ## v0.7.2
 
 `historical-procurement-analysis` 规则增强：
