@@ -1,5 +1,19 @@
 # CHANGELOG
 
+## v0.7.7
+
+`sourcing-invitation` 升级为 `0.3.2`：
+
+- 确认用户此前提供的企业《招标意向征集登记表.xlsx》应作为唯一正式模板；
+- 仓库 `.agents/skills/sourcing-invitation/templates/招标意向征集登记表模板.xlsx` 已替换为该原始附件的字节级一致文件；
+- 兼容目录 `skills/sourcing-invitation/templates/` 同步使用同一原始模板；
+- 新增 Original Template Integrity Gate；
+- 03 交付物必须通过“复制企业原模板 → 仅填当前项目允许字段 → 另存为项目文件”生成；
+- 禁止重新设计、重建、调整版式或使用通用表格替代企业模板；
+- 必须保留工作表、行列结构、合并单元格、样式、打印设置、公式/验证和供方填写区域；
+- 无法保证模板完整性时必须 BLOCK，不得交付替代版；
+- `sourcing-invitation-package.schema.yaml` 升级至 `0.3.2`，新增 `template_source_mode`、`template_integrity_preserved` 与原模板一致性检查字段。
+
 ## v0.7.6
 
 `sourcing-invitation` 升级为 `0.3.1`：
