@@ -1,4 +1,4 @@
-# Property Material Sourcing Skills — v0.7.6
+# Property Material Sourcing Skills — v0.7.7
 
 物业物资类 AI 邀标寻源 Skill 库。
 
@@ -46,7 +46,7 @@ official-supplier-matching
 sourcing-invitation
         ├─ 1个 BCC 群发邀标邮件.eml
         ├─ 最终需求清单.xlsx（独立交付）
-        └─ 招标意向征集登记表.xlsx（独立交付）
+        └─ 招标意向征集登记表.xlsx（企业原版模板副本生成）
         ↓
 人工审核并实际添加两个附件后发送
         ↓
@@ -66,7 +66,7 @@ sourcing-strategy
 | `historical-procurement-analysis` | 协议选择、有效订单过滤、12个月年化、年度增量、历史测算需求清单 | ✅ |
 | `material-requirement-analysis` | 需求诊断、P0澄清、强制生成澄清/最终需求清单 Excel | ✅ |
 | `official-supplier-matching` | 仅从官方供方库匹配候选供方 | ✅ |
-| `sourcing-invitation` | 生成单一 BCC EML + 两个独立 Excel | ✅ |
+| `sourcing-invitation` | 生成单一 BCC EML + 两个独立 Excel，登记表严格复用企业原版模板 | ✅ |
 | `supplier-shortlist` | 根据供方回复生成短名单表 | ✅ |
 | `shortlist-approval` | 短名单报批邮件及策略 Handoff | ✅ |
 | `sourcing-strategy` | 生成采购方案/策略报告 | ✅ |
@@ -102,7 +102,7 @@ P0 清零后必须生成 Excel：
 
 供方报价字段保持空白。
 
-## sourcing-invitation v0.3.1
+## sourcing-invitation v0.3.2
 
 固定只生成三个独立文件：
 
@@ -125,10 +125,19 @@ P0 清零后必须生成 Excel：
 - 两个 Excel 单独交付，由采购员实际发送前人工添加为附件；
 - 不自动发送邮件。
 
-规则文件：
+招标意向征集登记表规则：
+
+- 仓库模板必须与企业原始附件一致；
+- 生成 03 文件时必须先复制原模板，再填入允许的当前项目变量；
+- 禁止新建“类似模板”、重新排版、重建设计或用通用表格替代；
+- 工作表、行列结构、合并单元格、样式、打印设置、公式/验证及供方填写区域必须保持；
+- 供方待填写字段默认保持空白；
+- 如果不能保证原模板完整性，则该交付物必须 BLOCK，不得交付替代版。
+
+企业原版模板位置：
 
 ```text
-.agents/skills/sourcing-invitation/references/eml-delivery-rules.md
+.agents/skills/sourcing-invitation/templates/招标意向征集登记表模板.xlsx
 ```
 
 ## 核心原则
@@ -144,18 +153,16 @@ P0 清零后必须生成 Excel：
 9. 需求字段和供方报价字段严格分离。
 10. 邀标邮件只生成一个 EML，并使用 BCC 隐藏供方邮箱。
 11. 邀标 EML 不嵌入附件，两个 Excel 独立交付。
-12. AI计算、历史事实、假设和人工确认必须分开记录。
-13. 最终需求数量、候选供方、短名单、预算及定标规则由采购员确认。
+12. 招标意向征集登记表必须复制企业原版模板生成，不得重建。
+13. AI计算、历史事实、假设和人工确认必须分开记录。
+14. 最终需求数量、候选供方、短名单、预算及定标规则由采购员确认。
 
-## v0.7.6
+## v0.7.7
 
-- `sourcing-invitation` 升级至 v0.3.1；
-- 邮件正式交付物由 Markdown 正文升级为 `.eml` 草稿；
-- 每个项目只生成一个 EML；
-- 已确认供方邮箱统一写入 BCC；
-- 禁止供方邮箱进入 To/Cc；
-- 缺邮箱/冲突邮箱必须人工补充或确认，不得猜测；
-- EML 不嵌入附件；
-- 最终需求清单与招标意向征集登记表继续作为两个独立 Excel 文件交付；
-- 新增 `references/eml-delivery-rules.md`；
-- `sourcing-invitation-package.schema.yaml` 升级至 v0.3.1。
+- `sourcing-invitation` 升级至 v0.3.2；
+- 将仓库中的《招标意向征集登记表模板.xlsx》替换为用户此前提供的企业原始附件；
+- 新增 Original Template Integrity Gate；
+- 03 交付物必须按“复制原模板 → 填当前项目允许字段 → 另存”为项目文件；
+- 禁止重新设计、重建或用通用模板替代企业登记表；
+- `sourcing-invitation-package.schema.yaml` 增加 `template_source_mode` 与 `template_integrity_preserved`；
+- `.agents/skills/` 与兼容 `skills/` 同步更新。
