@@ -4,6 +4,7 @@ title: "物业物资邀标沟通三件套"
 description: >-
   official-supplier-matching 经人工确认后，由 sourcing-invitation 生成的标准输出包。
   固定包含一个 BCC 群发 EML 草稿和两个独立 Excel 文件；EML 不嵌入附件且不得自动发送。
+  招标意向征集登记表必须基于企业原始模板副本生成并保持模板完整性。
 type: object
 additionalProperties: false
 required:
@@ -15,7 +16,7 @@ required:
 properties:
   schema_version:
     type: string
-    const: "0.3.1"
+    const: "0.3.2"
 
   project:
     type: object
@@ -39,14 +40,9 @@ properties:
   recipients:
     type: object
     additionalProperties: false
-    required:
-      - selected_supplier_count
-      - bcc_recipients
-      - missing_recipient_emails
+    required: [selected_supplier_count, bcc_recipients, missing_recipient_emails]
     properties:
-      selected_supplier_count:
-        type: integer
-        minimum: 1
+      selected_supplier_count: {type: integer, minimum: 1}
       bcc_recipients:
         type: array
         items:
@@ -58,9 +54,7 @@ properties:
             supplier_name: {type: string}
             contact_name: {type: [string, "null"]}
             email: {type: string}
-            source:
-              type: string
-              enum: [official_registry, human_confirmed]
+            source: {type: string, enum: [official_registry, human_confirmed]}
       missing_recipient_emails:
         type: array
         items:
@@ -70,18 +64,14 @@ properties:
           properties:
             supplier_id: {type: [string, "null"]}
             supplier_name: {type: string}
-            reason:
-              type: string
-              enum: [missing_email, email_source_unconfirmed, conflicting_email]
+            reason: {type: string, enum: [missing_email, email_source_unconfirmed, conflicting_email]}
       to:
         type: [string, "null"]
         description: "不得填供方邮箱；仅可使用采购方明确提供的本方发送/归档地址。"
       cc:
         type: array
         items: {type: string}
-        description: "仅限采购员明确确认的内部抄送邮箱。"
-      from:
-        type: [string, "null"]
+      from: {type: [string, "null"]}
 
   artifacts:
     type: object
@@ -91,12 +81,7 @@ properties:
       invitation_email:
         type: object
         additionalProperties: false
-        required:
-          - format
-          - filename
-          - recipient_mode
-          - attachments_embedded
-          - status
+        required: [format, filename, recipient_mode, attachments_embedded, status]
         properties:
           format: {type: string, const: eml}
           filename: {type: string}
@@ -112,11 +97,7 @@ properties:
           template: {type: [string, "null"]}
           status:
             type: string
-            enum:
-              - ready_for_human_review
-              - draft_missing_recipient_email
-              - draft_recipient_email_conflict
-              - blocked
+            enum: [ready_for_human_review, draft_missing_recipient_email, draft_recipient_email_conflict, blocked]
 
       requirement_list:
         type: object
@@ -132,12 +113,20 @@ properties:
       supplier_intention_form:
         type: object
         additionalProperties: false
-        required: [format, filename, template, status]
+        required: [format, filename, template, template_source_mode, template_integrity_preserved, status]
         properties:
           format: {type: string, const: xlsx}
           filename: {type: string}
           template: {type: string}
+          template_source_mode: {type: string, const: copy_original_enterprise_template}
+          template_integrity_preserved: {type: boolean, const: true}
           embedded_in_eml: {type: boolean, const: false}
+          populated_project_fields:
+            type: array
+            items: {type: string}
+          supplier_response_fields_left_blank:
+            type: boolean
+            const: true
           status: {type: string, enum: [generated, blocked]}
 
   consistency_check:
@@ -152,6 +141,7 @@ properties:
       supplier_emails_only_in_bcc: {type: boolean}
       eml_has_no_embedded_attachments: {type: boolean}
       attachment_filenames_match_body: {type: boolean}
+      original_intention_form_template_preserved: {type: boolean}
       issues:
         type: array
         items: {type: string}
@@ -160,9 +150,7 @@ properties:
     type: object
     additionalProperties: false
     properties:
-      status:
-        type: string
-        enum: [pending_send_review, approved_to_send]
+      status: {type: string, enum: [pending_send_review, approved_to_send]}
       actual_attachments_added_before_send: {type: [boolean, "null"]}
       notes:
         type: array
