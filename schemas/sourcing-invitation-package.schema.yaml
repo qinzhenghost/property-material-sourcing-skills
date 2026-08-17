@@ -4,19 +4,21 @@ title: "物业物资邀标沟通三件套"
 description: >-
   official-supplier-matching 经人工确认后，由 sourcing-invitation 生成的标准输出包。
   固定包含一个 BCC 群发 EML 草稿和两个独立 Excel 文件；EML 不嵌入附件且不得自动发送。
-  招标意向征集登记表必须基于企业原始模板副本生成并保持模板完整性。
+  招标意向征集登记表必须基于企业原始模板副本生成并保持模板完整性；Sheet1!N3 的投标保证金
+  按采购清单预估总金额的 1% 计算并向上取整至 1000 元整数倍。
 type: object
 additionalProperties: false
 required:
   - schema_version
   - project
   - recipients
+  - bid_bond
   - artifacts
   - consistency_check
 properties:
   schema_version:
     type: string
-    const: "0.3.2"
+    const: "0.3.3"
 
   project:
     type: object
@@ -36,6 +38,18 @@ properties:
       contact_phone: {type: [string, "null"]}
       contact_email: {type: [string, "null"]}
       response_deadline: {type: [string, "null"]}
+      procurement_estimated_total_amount:
+        type: [number, "null"]
+        minimum: 0
+        description: "当前项目可追溯的采购清单预估总金额；不得使用供应商未填写的报价列推断。"
+      procurement_estimated_total_amount_source:
+        type: [string, "null"]
+        enum:
+          - confirmed_requirement
+          - historical_procurement_handoff
+          - material_requirement_handoff
+          - human_confirmed
+          - null
 
   recipients:
     type: object
@@ -72,6 +86,51 @@ properties:
         type: array
         items: {type: string}
       from: {type: [string, "null"]}
+
+  bid_bond:
+    type: object
+    additionalProperties: false
+    required:
+      - rate
+      - rounding_unit
+      - rounding_mode
+      - template_cell
+      - template_variable
+      - status
+    properties:
+      rate:
+        type: number
+        const: 0.01
+      rounding_unit:
+        type: integer
+        const: 1000
+      rounding_mode:
+        type: string
+        const: ceiling
+      formula:
+        type: string
+        const: "CEILING(procurement_estimated_total_amount * 0.01, 1000)"
+      raw_amount:
+        type: [number, "null"]
+        minimum: 0
+      calculated_amount:
+        type: [integer, "null"]
+        minimum: 0
+        multipleOf: 1000
+      amount_source:
+        type: [string, "null"]
+      template_cell:
+        type: string
+        const: "Sheet1!N3"
+      template_variable:
+        type: string
+        const: "{{投标保证金金额}}"
+      status:
+        type: string
+        enum:
+          - calculated
+          - missing_procurement_estimated_total_amount
+          - blocked
 
   artifacts:
     type: object
@@ -113,7 +172,15 @@ properties:
       supplier_intention_form:
         type: object
         additionalProperties: false
-        required: [format, filename, template, template_source_mode, template_integrity_preserved, status]
+        required:
+          - format
+          - filename
+          - template
+          - template_source_mode
+          - template_integrity_preserved
+          - bid_bond_cell
+          - bid_bond_variable_replaced
+          - status
         properties:
           format: {type: string, const: xlsx}
           filename: {type: string}
@@ -127,7 +194,18 @@ properties:
           supplier_response_fields_left_blank:
             type: boolean
             const: true
-          status: {type: string, enum: [generated, blocked]}
+          bid_bond_cell:
+            type: string
+            const: "Sheet1!N3"
+          bid_bond_variable_replaced:
+            type: boolean
+          bid_bond_amount_written:
+            type: [integer, "null"]
+            minimum: 0
+            multipleOf: 1000
+          status:
+            type: string
+            enum: [generated, blocked_missing_estimated_total_amount, blocked_template_integrity, blocked_bid_bond_mismatch]
 
   consistency_check:
     type: object
@@ -142,6 +220,10 @@ properties:
       eml_has_no_embedded_attachments: {type: boolean}
       attachment_filenames_match_body: {type: boolean}
       original_intention_form_template_preserved: {type: boolean}
+      procurement_estimated_total_amount_traceable: {type: boolean}
+      bid_bond_formula_correct: {type: boolean}
+      bid_bond_n3_variable_replaced: {type: boolean}
+      bid_bond_n3_amount_matches_calculation: {type: boolean}
       issues:
         type: array
         items: {type: string}
@@ -152,6 +234,7 @@ properties:
     properties:
       status: {type: string, enum: [pending_send_review, approved_to_send]}
       actual_attachments_added_before_send: {type: [boolean, "null"]}
+      bid_bond_amount_reviewed: {type: [boolean, "null"]}
       notes:
         type: array
         items: {type: string}
