@@ -2,8 +2,9 @@ $schema: "https://json-schema.org/draft/2020-12/schema"
 $id: "https://example.local/schemas/historical-procurement.schema.yaml"
 title: "物业物资历史采购分析"
 description: >-
-  历史订单分析前必须先由用户明确选择一个或多个协议编号，再仅保留已完成和执行中订单，
-  形成可追溯的采购数量/金额基线、需求清单输出及采购策略 Handoff。
+  历史订单分析前由用户明确选择协议编号，仅保留已完成/执行中订单；
+  不足12个月的数据必须折算为12个月采购基线，缺少两年度可比数据时要求用户补充数据、
+  提供预估增量比例或确认0%增量，并保证需求清单年度预计采购量非空。
 type: object
 additionalProperties: false
 required:
@@ -13,6 +14,8 @@ required:
   - agreement_selection
   - order_status_filter
   - analysis_scope
+  - annualization
+  - growth_rate_decision
   - historical_records
   - projection
   - requirement_handoff
@@ -20,11 +23,10 @@ required:
 properties:
   schema_version:
     type: string
-    const: "0.5.4"
+    const: "0.5.5"
   procurement_domain:
     type: string
     const: property_material
-
   source:
     type: object
     additionalProperties: false
@@ -40,18 +42,12 @@ properties:
       notes:
         type: array
         items: {type: string}
-
   agreement_selection:
     type: object
     additionalProperties: false
-    required:
-      - agreement_field
-      - available_agreements
-      - selected_agreement_numbers
-      - selection_confirmed
+    required: [agreement_field, available_agreements, selected_agreement_numbers, selection_confirmed]
     properties:
-      agreement_field:
-        type: string
+      agreement_field: {type: string}
       available_agreements:
         type: array
         minItems: 1
@@ -82,30 +78,20 @@ properties:
       include_unlinked_agreement_records:
         type: boolean
         default: false
-      unselected_order_count:
-        type: [integer, "null"]
-        minimum: 0
-      unlinked_agreement_record_count:
-        type: [integer, "null"]
-        minimum: 0
+      unselected_order_count: {type: [integer, "null"], minimum: 0}
+      unlinked_agreement_record_count: {type: [integer, "null"], minimum: 0}
       notes:
         type: array
         items: {type: string}
-
   order_status_filter:
     type: object
     additionalProperties: false
-    required:
-      - filter_status
-      - allowed_statuses
-      - status_field
-      - notes
+    required: [filter_status, allowed_statuses, status_field, notes]
     properties:
       filter_status:
         type: string
         enum: [applied, missing_status_field, user_confirmed_prefiltered]
-      status_field:
-        type: [string, "null"]
+      status_field: {type: [string, "null"]}
       allowed_statuses:
         const: ["已完成", "执行中"]
       total_rows: {type: [integer, "null"], minimum: 0}
@@ -125,7 +111,6 @@ properties:
       notes:
         type: array
         items: {type: string}
-
   analysis_scope:
     type: object
     additionalProperties: false
@@ -139,7 +124,54 @@ properties:
       period_completeness:
         type: string
         enum: [full_year, comparable_period, partial_period, unknown]
-
+  annualization:
+    type: object
+    additionalProperties: false
+    required: [annualization_required, annualization_method, annualization_factor]
+    properties:
+      coverage_start: {type: [string, "null"]}
+      coverage_end: {type: [string, "null"]}
+      covered_days: {type: [integer, "null"], minimum: 1}
+      covered_months: {type: [number, "null"], exclusiveMinimum: 0}
+      covered_month_equivalent: {type: [number, "null"], exclusiveMinimum: 0}
+      annualization_required: {type: boolean}
+      annualization_method:
+        type: string
+        enum: [full_year_actual, full_calendar_months_to_12, day_equivalent_to_12_months, user_confirmed_period]
+      annualization_factor: {type: number, exclusiveMinimum: 0}
+      seasonality_risk:
+        type: string
+        enum: [low, medium, high, unknown]
+      notes:
+        type: array
+        items: {type: string}
+  growth_rate_decision:
+    type: object
+    additionalProperties: false
+    required: [status, two_year_comparable_data_available, growth_rate_source]
+    properties:
+      status:
+        type: string
+        enum: [calculated, user_confirmed, pending_user_confirmation]
+      two_year_comparable_data_available: {type: boolean}
+      earlier_period: {type: [string, "null"]}
+      later_period: {type: [string, "null"]}
+      earlier_spend: {type: [number, "null"], minimum: 0}
+      later_spend: {type: [number, "null"], minimum: 0}
+      calculated_growth_rate: {type: [number, "null"]}
+      confirmed_growth_rate: {type: [number, "null"]}
+      growth_rate_source:
+        type: string
+        enum: [quantity_yoy, spend_yoy_proxy, official_business_plan, official_scale_data, user_estimated_growth, zero_growth, unavailable]
+      price_effect_warning: {type: [string, "null"]}
+      user_options:
+        type: array
+        items:
+          type: string
+          enum: [supplement_comparable_history, provide_estimated_growth_rate, use_zero_growth]
+      notes:
+        type: array
+        items: {type: string}
   historical_records:
     type: array
     minItems: 1
@@ -168,24 +200,6 @@ properties:
         evidence:
           type: array
           items: {type: string}
-
-  scale_analysis:
-    type: object
-    additionalProperties: false
-    properties:
-      previous_period: {type: [string, "null"]}
-      target_period: {type: [string, "null"]}
-      previous_scale: {type: [number, "null"]}
-      target_scale: {type: [number, "null"]}
-      scale_unit: {type: [string, "null"]}
-      yoy_growth_rate: {type: [number, "null"]}
-      growth_basis:
-        type: string
-        enum: [official_business_plan, official_scale_data, user_confirmed_assumption, historical_trend_only, unavailable]
-      evidence:
-        type: array
-        items: {type: string}
-
   projection:
     type: object
     additionalProperties: false
@@ -193,32 +207,35 @@ properties:
     properties:
       method:
         type: string
-        enum: [quantity_driven, amount_only, no_projection]
-      scale_growth_rate_used: {type: [number, "null"]}
+        enum: [quantity_driven, amount_only]
+      growth_rate_used: {type: [number, "null"]}
       price_growth_rate_used: {type: [number, "null"]}
       item_projections:
         type: array
         items:
           type: object
           additionalProperties: false
-          required: [item_key, projection_method, confidence]
+          required: [item_key, annualized_baseline_quantity, projected_quantity, quantity_status, projection_method, confidence]
           properties:
             item_key: {type: string}
             region: {type: [string, "null"]}
-            baseline_quantity: {type: [number, "null"], minimum: 0}
-            projected_quantity: {type: [number, "null"], minimum: 0}
+            observed_quantity: {type: [number, "null"], minimum: 0}
+            observed_amount: {type: [number, "null"], minimum: 0}
+            covered_month_equivalent: {type: [number, "null"], exclusiveMinimum: 0}
+            annualization_factor: {type: number, exclusiveMinimum: 0}
+            annualized_baseline_quantity: {type: number, minimum: 0}
+            annualized_baseline_amount: {type: [number, "null"], minimum: 0}
+            growth_rate_applied: {type: [number, "null"]}
+            projected_quantity: {type: number, minimum: 0}
             baseline_unit_price: {type: [number, "null"], minimum: 0}
             projected_unit_price: {type: [number, "null"], minimum: 0}
             projected_amount: {type: [number, "null"], minimum: 0}
+            quantity_status:
+              type: string
+              enum: [provisional_annualized_baseline, final_projected]
             projection_method:
               type: string
-              enum:
-                - last_full_year_actual
-                - multi_year_average
-                - last_full_year_adjusted_by_scale
-                - amount_only_adjusted_by_scale
-                - user_confirmed_override
-                - no_reliable_projection
+              enum: [full_year_actual_plus_growth, partial_period_annualized_plus_growth, partial_period_annualized_pending_growth, user_confirmed_override]
             confidence:
               type: string
               enum: [high, medium, low]
@@ -226,14 +243,10 @@ properties:
               type: array
               items: {type: string}
       projected_total_amount: {type: [number, "null"]}
-
   requirement_handoff:
     type: object
     additionalProperties: false
-    required:
-      - selected_agreement_numbers
-      - quantity_updates
-      - requirement_workbook_output
+    required: [selected_agreement_numbers, quantity_updates, requirement_workbook_output]
     properties:
       selected_agreement_numbers:
         type: array
@@ -244,15 +257,23 @@ properties:
         items:
           type: object
           additionalProperties: false
-          required: [item_key, evidence, human_confirmation_status]
+          required: [item_key, annualized_baseline_quantity, suggested_estimated_quantity, quantity_status, evidence, human_confirmation_status]
           properties:
             item_key: {type: string}
             region: {type: [string, "null"]}
-            baseline_quantity: {type: [number, "null"]}
-            baseline_period: {type: [string, "null"]}
+            observed_quantity: {type: [number, "null"], minimum: 0}
+            covered_month_equivalent: {type: [number, "null"], exclusiveMinimum: 0}
+            annualization_factor: {type: number, exclusiveMinimum: 0}
+            annualized_baseline_quantity: {type: number, minimum: 0}
+            growth_rate_source:
+              type: string
+              enum: [quantity_yoy, spend_yoy_proxy, official_business_plan, official_scale_data, user_estimated_growth, zero_growth, unavailable]
             growth_rate_applied: {type: [number, "null"]}
-            suggested_estimated_quantity: {type: [number, "null"], minimum: 0}
+            suggested_estimated_quantity: {type: number, minimum: 0}
             suggested_estimated_amount: {type: [number, "null"], minimum: 0}
+            quantity_status:
+              type: string
+              enum: [provisional_annualized_baseline, final_projected]
             confidence:
               type: string
               enum: [high, medium, low]
@@ -262,21 +283,20 @@ properties:
               items: {type: string}
             human_confirmation_status:
               type: string
-              enum: [pending, confirmed, adjusted]
+              enum: [pending_growth_confirmation, pending, confirmed, adjusted]
       requirement_workbook_output:
         type: object
         additionalProperties: false
-        required:
-          - template_path
-          - output_filename
-          - output_status
-          - supplier_response_fields_left_blank
+        required: [template_path, output_filename, output_status, annual_quantity_non_blank, supplier_response_fields_left_blank]
         properties:
           template_path: {type: string}
           output_filename: {type: string}
           output_status:
             type: string
-            enum: [generated, generated_with_pending_quantities, blocked]
+            enum: [generated_final, generated_with_provisional_annualized_quantity, blocked]
+          annual_quantity_non_blank:
+            type: boolean
+            const: true
           populated_fields:
             type: array
             items: {type: string}
@@ -285,7 +305,6 @@ properties:
           notes:
             type: array
             items: {type: string}
-
   strategy_report_handoff:
     type: object
     additionalProperties: false
@@ -297,6 +316,12 @@ properties:
         type: array
         items: {type: string}
       order_filter_summary:
+        type: array
+        items: {type: string}
+      annualization_summary:
+        type: array
+        items: {type: string}
+      growth_rate_summary:
         type: array
         items: {type: string}
       spend_analysis:
@@ -326,13 +351,14 @@ properties:
               type: array
               minItems: 1
               items: {type: string}
-
   human_review:
     type: object
     additionalProperties: false
     properties:
       agreement_selection_confirmed: {type: boolean}
       order_filter_reviewed: {type: boolean}
+      annualization_reviewed: {type: boolean}
+      growth_rate_confirmed: {type: boolean}
       projection_reviewed: {type: boolean}
       quantity_updates_confirmed: {type: boolean}
       reviewer_notes:
