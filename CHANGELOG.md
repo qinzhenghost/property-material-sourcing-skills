@@ -1,5 +1,23 @@
 # CHANGELOG
 
+## v0.7.4
+
+`historical-procurement-analysis` 升级为 `0.5.5`：
+
+- 将原“部分周期不年化”规则调整为“有效历史数据不足12个月时必须折算为12个月采购基线”；
+- 完整自然月使用 `12 / covered_months` 折算；首尾月不完整时按有效数据起止日期换算月当量；
+- 新增 `annualization` 结构：覆盖日期、覆盖天数/月数、月当量、年化系数、季节性风险；
+- 年化值明确标记为比例外推，不得写成历史全年实际；
+- 需求清单 `年度预计采购量` 不再允许留空；
+- 当年度增量比例尚未确认时，先填12个月年化基线，并标记 `provisional_annualized_baseline` / `pending_growth_confirmation`；
+- 新增 `growth_rate_decision`；
+- 年度增量优先使用可比两年度数量同比，其次可比两年度采购金额同比 `spend_yoy_proxy`、正式业务规模增幅或用户确认的预估增量；
+- 缺少两年度可比数据时必须提示用户三选一：补充另一年度数据 / 提供预估增量比例 / 使用0%增量；
+- 用户确认增量后按 `annualized_baseline_quantity × (1 + confirmed_growth_rate)` 更新最终年度预计采购量；
+- 采购金额同比不得同时作为数量增长和价格增长，防止重复放大；
+- 新增 `references/annualization-and-growth-rules.md`；
+- `historical-procurement.schema.yaml` 与示例升级至 `0.5.5`。
+
 ## v0.7.3
 
 `historical-procurement-analysis` 升级为 `0.5.4`：
@@ -60,8 +78,7 @@
 
 ## v0.5.1
 
-- 基于真实订单导出固定历史订单字段映射；
-- 部分周期数据不得机械年化。
+- 基于真实订单导出固定历史订单字段映射。
 
 ## v0.5.0
 
