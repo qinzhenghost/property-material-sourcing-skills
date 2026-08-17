@@ -1,8 +1,8 @@
 ---
 name: historical-procurement-analysis
-description: 当物业物资采购项目存在历史订单数据时，先识别协议编号并要求用户明确选择一个或多个协议，再仅保留“已完成”和“执行中”订单，剔除取消/退货等无效数据，分析历史采购量、金额、价格、区域及采购规模变化，形成可追溯的需求数量/金额基线，并按需求清单模板输出历史测算需求清单，同时向采购策略报告提供结构化 Handoff。
+description: 当物业物资采购项目存在历史订单数据时，先识别协议编号并要求用户明确选择一个或多个协议，再仅保留“已完成”和“执行中”订单；对不足12个月的有效历史数据强制折算为12个月年度采购基线，并在缺少两年度可比数据时要求用户补充数据或确认预估增量比例，最终按需求清单模板输出非空的年度预计采购量，同时向采购策略报告提供结构化 Handoff。
 metadata:
-  version: "0.5.4"
+  version: "0.5.5"
   domain: "property-material-procurement"
   stage: "pre-requirement"
 ---
@@ -11,19 +11,21 @@ metadata:
 
 ## 1. Purpose
 
-本 Skill 位于需求分析之前，用于：
+本 Skill 位于需求分析之前：
 
-`历史订单 → 协议范围选择 → 有效订单过滤 → 历史采购分析 → 需求数量/金额基线 → 历史测算需求清单 → Handoff`
+`历史订单 → 协议范围选择 → 有效订单过滤 → 12个月年化基线 → 年度增量确认/计算 → 历史测算需求清单 → Handoff`
 
 主要输出：
 
 1. 协议编号选择摘要；
 2. 订单状态过滤审计；
 3. SKU / 区域历史采购量、金额和价格分析；
-4. 条件满足时的下一周期建议采购量/金额；
-5. `requirement_handoff`；
-6. `{{项目名称}}-历史测算需求清单.xlsx`；
-7. `strategy_report_handoff`。
+4. 不足12个月数据的12个月年化数量/金额基线；
+5. 年度同步增量比例及其依据；
+6. 下一年度预计采购量/金额；
+7. `requirement_handoff`；
+8. `{{项目名称}}-历史测算需求清单.xlsx`；
+9. `strategy_report_handoff`。
 
 ## 2. Required Inputs
 
@@ -37,14 +39,7 @@ metadata:
 - 数量；
 - 单位。
 
-协议字段可以包括：
-
-- 协议编号
-- 协议号
-- 合同编号
-- 合同号
-- 框架协议编号
-- 采购协议编号
+协议字段可包括：协议编号、协议号、合同编号、合同号、框架协议编号、采购协议编号。
 
 不得仅凭文件名、项目名或供应商名称猜协议编号。
 
@@ -56,34 +51,20 @@ metadata:
 
 ### Step 2 — Agreement Selection Gate（强制）
 
-在任何正式历史统计、预测和需求清单数量生成前，必须先提取全部唯一协议编号。
+在任何正式历史统计、预测和需求清单数量生成前，提取全部唯一协议编号。
 
 对每个协议编号展示：
 
 | 协议编号 | 原始订单数 | 有效订单数 | 有效明细行 | 数据期间 | SKU数 | 有效含税金额 | 主要区域 |
 |---|---:|---:|---:|---|---:|---:|---|
 
-其中“有效”仅用于概览，定义为订单状态属于：
+“有效”仅指订单状态为 `已完成` 或 `执行中`。
 
-- `已完成`
-- `执行中`
+必须由用户明确选择一个或多个协议编号。禁止默认选择最新协议、金额最大协议或全部协议；即使只有一个协议也必须确认。
 
-然后要求用户**明确选择一个或多个协议编号**。
+多选时必须保留 `agreement_number` 维度，先分别统计，再生成合并结果。无协议编号记录默认排除，除非用户明确确认纳入。
 
-规则：
-
-1. 未经用户确认不得进入正式分析；
-2. 禁止默认选择最新协议；
-3. 禁止默认选择金额最大的协议；
-4. 禁止默认选择全部协议；
-5. 即使只识别到一个协议，也必须让用户确认；
-6. 用户可以同时选择多个协议；
-7. 多协议分析必须保留 `agreement_number` 维度，先分别统计，再生成合并结果；
-8. 无协议编号记录默认排除，只有用户明确要求“包含未关联协议订单”并确认后才能纳入。
-
-如果协议编号字段缺失，标记 `missing_agreement_field`，不进入正式分析。
-
-详细规则见 `references/agreement-selection-rules.md`。
+详见 `references/agreement-selection-rules.md`。
 
 ### Step 3 — Apply Selected Agreement Scope
 
@@ -91,36 +72,61 @@ metadata:
 
 `agreement_number IN user_selected_agreement_numbers`
 
-输出范围审计：可选协议数、选中协议数、选中协议编号、未选协议订单数、无协议编号记录数。
+输出协议范围审计。
 
 ### Step 4 — Order Status Filter Gate（强制）
 
-在所选协议范围内，仅保留：
+仅保留：
 
 - `已完成`
 - `执行中`
 
-排除：
+排除取消、退货、作废、关闭及其他状态。
 
-- `已取消`
-- `已退货`
-- `取消`
-- `退货`
-- `已作废`
-- `关闭`
-- 以及其他未明确等于“已完成/执行中”的状态。
+这些被排除记录不得进入数量、金额、平均单价、SKU占比、供应商份额、年化或预测。
 
-取消、退货等记录不得进入采购量、采购金额、平均单价、SKU占比、供应商份额或预测。
+如果无订单状态字段，不得默认全部有效；只有采购员明确确认源数据已预过滤后才能继续。
 
-输出：原始行数、保留行数、剔除行数、保留订单数、按状态分类的剔除数量。
+### Step 5 — Coverage & 12-Month Annualization Gate（强制）
 
-如果没有订单状态字段，不得默认全部有效；只有采购员明确确认源数据已按上述状态预过滤后才能继续。
+订单状态过滤完成后，判断所选协议有效数据覆盖周期。
 
-### Step 5 — Period Completeness Gate
+#### 5.1 完整12个月或完整年度
 
-- 完整年度/可比同期：可进入同比和预测；
-- 部分月份/周度：只做 observed baseline、采购结构和价格基线；
-- 禁止机械使用 `样本量 ÷ 天数 × 365` 形成年度需求量，除非用户明确要求并接受该假设。
+若存在完整12个月可比历史：
+
+- 直接把该完整年度实际量作为 `annualized_baseline_quantity`；
+- `annualization_factor = 1`；
+- 不重复放大。
+
+#### 5.2 不足12个月
+
+如果有效历史数据不足12个月，**必须折算为12个月采购基线**，不得把年度预计采购量留空。
+
+优先计算方式：
+
+1. 如果数据按完整自然月提供，使用实际覆盖月数 `covered_months`；
+2. 如果首尾月份不完整或是订单明细日期，使用有效数据起止日期计算 `covered_days`，再换算月当量：
+   `covered_month_equivalent = covered_days / 365.2425 × 12`；
+3. `annualization_factor = 12 / covered_month_equivalent`；
+4. `annualized_baseline_quantity = observed_valid_quantity × annualization_factor`；
+5. `annualized_baseline_amount = observed_valid_amount × annualization_factor`。
+
+必须保留：
+
+- 数据起止日期；
+- 覆盖天数/月当量；
+- 年化系数；
+- 原始有效采购量/金额；
+- 年化后的12个月采购量/金额；
+- `annualization_method`；
+- 数据季节性/集中下单风险提醒。
+
+年化结果是**基于比例外推的年度基线**，不是历史实际全年值。
+
+如果数据少于1个月或明显属于一次性集中采购，仍按用户要求提供年化基线，但 `confidence=low` 并突出风险。
+
+详见 `references/annualization-and-growth-rules.md`。
 
 ### Step 6 — SKU / Region Normalization
 
@@ -132,77 +138,139 @@ SKU优先使用：
 
 `名称 + 品牌 + 规格/型号 + 单位`
 
-多区域历史订单必须按：
+多区域订单按：
 
 `协议编号 + SKU + 区域`
 
 聚合数量和金额。
 
-如果需求清单同SKU重复行未明确区域，不自动分配数量。
-
 ### Step 7 — Historical Analysis
 
-基于所选协议的有效订单分析：
+基于所选协议有效订单分析：
 
 - 历史采购量/金额；
+- 年化12个月采购量/金额；
 - 历史成交价；
 - SKU占比及Top SKU；
 - 区域结构；
 - 月度/季度趋势；
-- 同比数量/金额变化（有可比数据时）；
-- 供应商集中度（数据支持时）。
+- 同比数量/金额变化；
+- 供应商集中度。
 
-每项结论必须能回溯到协议编号、订单状态和数据期间。
+### Step 8 — Annual Growth Rate Decision Gate（强制）
 
-### Step 8 — Projection
+下一年度预计采购量必须基于：
 
-有可靠完整基线和明确业务规模增长依据时：
+`12个月年化基线 × (1 + 年度增量比例)`
 
-`预计采购量 = 历史基准量 × (1 + 数量增长率)`
+年度增量比例优先级：
 
-如有独立价格变化依据：
+1. **可比两年度数量同比**：SKU数量口径可靠时优先；
+2. **可比两年度采购金额同比**：当数量口径不可比或用于整体采购规模时，可计算采购金额同比作为 `spend_yoy_proxy`；
+3. 企业正式业务规模/预算增幅；
+4. 用户明确确认的预估增量比例；
+5. 用户明确选择 `0%` 增量，直接使用12个月年化基线。
 
-`预计单价 = 历史参考单价 × (1 + 价格变化率)`
+两年度采购金额同比：
 
-`预计采购金额 = 预计采购量 × 预计单价`
+`spend_yoy_rate = (later_year_spend - earlier_year_spend) / earlier_year_spend`
 
-数量增长与价格增长必须分开。没有规模依据时不得自行假设5%、8%、10%等增长率。
+注意：
 
-### Step 9 — Requirement List Output（固定）
+- 金额同比只作为采购规模代理，不等于价格增长；
+- 如果能识别明显价格变化，必须提示金额同比可能包含价格因素；
+- 数量增长和价格增长仍需分开，避免双重放大。
+
+#### 缺少两年度可比数据时
+
+如果无法从至少两个可比年度的有效采购金额/数量测算年度同步增量比例，Skill 必须提醒用户并给出三个明确选项：
+
+1. **补充数据**：补充另一年度同口径历史订单/年度采购金额；
+2. **提供预估增量比例**：例如 `+5%`、`+8%`、`-3%`；
+3. **按0%增量**：直接采用12个月年化基线作为年度预计采购量。
+
+在用户确认前：
+
+- 需求清单中的 `年度预计采购量` **不得留空**；
+- 先填入 `annualized_baseline_quantity` 作为 `provisional_annualized_baseline`；
+- 备注必须写明“当前为12个月年化基线，年度增量比例待确认”；
+- `human_confirmation_status = pending_growth_confirmation`；
+- 不得把该临时基线描述为最终确认需求量。
+
+用户选择后重新计算并更新为：
+
+`final_estimated_quantity = annualized_baseline_quantity × (1 + confirmed_growth_rate)`
+
+### Step 9 — Price & Amount Projection
+
+有独立价格变化依据时：
+
+`projected_unit_price = baseline_unit_price × (1 + price_growth_rate)`
+
+`projected_amount = final_estimated_quantity × projected_unit_price`
+
+无独立价格变化依据时，价格增长率默认为0仅用于内部金额测算，并清晰标注。
+
+不得把同一个采购金额同比同时当作数量增长和价格增长重复计算。
+
+### Step 10 — Requirement List Output（固定）
 
 使用 `templates/需求清单模板.xlsx` 生成：
 
 `{{项目名称}}-历史测算需求清单.xlsx`
 
-可回填采购方字段：区域、名称、品牌、规格、单位、起订量（有明确依据时）、年度预计采购量（预测条件满足时）。
+`年度预计采购量` 必须有值：
 
-以下供方报价字段必须保持空白：
+- 完整年度且增长率已确定：填最终预计量；
+- 不足12个月且增长率已确定：填年化基线 × 增长率后的预计量；
+- 增长率尚未确定：填12个月年化基线，并在备注标记“待确认年度增量比例”。
+
+可回填采购方字段：
+
+- 序号
+- 区域
+- 名称
+- 品牌
+- 规格
+- 单位
+- 起订量（有明确依据时）
+- 年度预计采购量
+- 备注
+
+以下供方报价字段保持空白：
 
 - 含税单价
 - 未税单价
 - 税率
 - 含税总价
 
-历史价格只进入内部分析和 `strategy_report_handoff`。
+历史参考价格只进入内部分析与 `strategy_report_handoff`。
 
-预测条件不足时仍可生成需求清单结构，但年度预计采购量留空/待人工确认，不机械年化。
+### Step 11 — Existing Requirement Conflict
 
-### Step 10 — Existing Requirement Conflict
+如果原需求清单已有数量，不静默覆盖。输出：
 
-如果原需求清单已有数量，不静默覆盖。输出：原数量、历史建议量、差异数量、差异比例和 `human_confirmation_status=pending`。
+- 原数量；
+- 12个月年化基线；
+- 增量比例；
+- 新建议量；
+- 差异数量/比例；
+- 人工确认状态。
 
 ## 4. Structured Handoff
 
-`requirement_handoff` 至少记录：
+`requirement_handoff.quantity_updates` 至少记录：
 
-- selected_agreement_numbers
-- order_status_filter
 - item_key
 - region
-- baseline_period
-- baseline_quantity
+- observed_quantity
+- covered_month_equivalent
+- annualization_factor
+- annualized_baseline_quantity
+- growth_rate_source
 - growth_rate_applied
 - suggested_estimated_quantity
+- quantity_status
 - confidence
 - evidence
 - human_confirmation_status
@@ -211,33 +279,35 @@ SKU优先使用：
 
 - selected_agreement_numbers
 - 有效订单口径
-- 历史采购量/采购额
-- SKU/区域结构
+- 覆盖周期
+- 年化方法与年化系数
+- 原始采购量/采购额
+- 12个月年化采购量/金额
+- 同比/增量比例依据
 - 历史价格
-- 同比分析
-- 预测依据
 - 风险与数据限制
 
 ## 5. Mandatory Audits
 
 ```yaml
-agreement_selection:
-  agreement_field: 协议编号
-  available_agreements: []
-  selected_agreement_numbers: []
-  selection_confirmed: true
-  include_unlinked_agreement_records: false
-  unselected_order_count: 0
-  unlinked_agreement_record_count: 0
+annualization:
+  coverage_start: 2025-01-01
+  coverage_end: 2025-06-30
+  covered_days: 181
+  covered_month_equivalent: 5.95
+  annualization_method: day_equivalent_to_12_months
+  annualization_factor: 2.0168
+  annualization_required: true
 
-order_status_filter:
-  included_statuses:
-    - 已完成
-    - 执行中
-  raw_record_count: 0
-  included_record_count: 0
-  excluded_record_count: 0
-  excluded_by_status: {}
+growth_rate_decision:
+  status: pending_user_confirmation
+  two_year_comparable_data_available: false
+  calculated_growth_rate: null
+  growth_rate_source: unavailable
+  user_options:
+    - supplement_comparable_history
+    - provide_estimated_growth_rate
+    - use_zero_growth
 ```
 
 ## 6. Guardrails
@@ -245,28 +315,37 @@ order_status_filter:
 AI MUST NOT：
 
 - 未经用户选择就默认协议；
-- 默认选择全部协议；
-- 把不同协议静默混合；
-- 默认纳入无协议编号订单；
-- 把已取消/已退货订单计入历史采购；
-- 在状态字段缺失时默认订单有效；
-- 将部分周期数据机械年化；
-- 无增长依据时制造增长率；
+- 纳入取消/退货等无效订单；
+- 把部分周期采购量直接当全年历史实际；
+- 年化后不说明比例外推假设；
+- 缺两年度可比数据时自行制造增量比例；
+- 把采购金额同比同时当数量增长和价格增长；
+- 将年度预计采购量留空；
+- 将临时12个月年化基线冒充最终人工确认需求；
 - 不同规格/单位SKU直接合并；
 - 将历史价格填入供方报价字段；
-- 用低可信度预测静默覆盖人工数量。
+- 静默覆盖采购员已有数量。
 
 ## 7. Human Review
 
-采购员最终确认：分析采用的协议编号、是否纳入未关联协议订单、异常订单处理、SKU映射、区域映射、增长依据、最终需求数量和预计金额。
+采购员最终确认：
+
+- 协议编号；
+- 无效订单过滤；
+- SKU/区域映射；
+- 年化周期口径；
+- 是否补充另一年度数据；
+- 年度增量比例；
+- 最终年度预计采购量；
+- 预计采购金额。
 
 ## 8. Success Criteria
 
-1. 用户明确选择了一个或多个协议编号；
-2. 只有所选协议进入正式分析；
-3. 只有已完成/执行中订单进入历史基线；
-4. 每个结果能追溯到协议编号和有效订单；
-5. 不完整周期不机械年化；
-6. 能按模板输出需求清单；
-7. 历史价格与供方报价字段严格隔离；
+1. 用户明确选择一个或多个协议编号；
+2. 只有已完成/执行中订单参与计算；
+3. 不足12个月的数据一定生成12个月年化采购量；
+4. 需求清单年度预计采购量不为空；
+5. 缺少两年度可比数据时明确要求用户选择增量处理方式；
+6. 增量未确认时，需求清单以12个月年化基线临时填充并清楚标注；
+7. 增量确认后可更新为最终预计采购量；
 8. Handoff可被需求分析和采购策略报告直接消费。
