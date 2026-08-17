@@ -1,48 +1,152 @@
 sourcing_invitation_package:
-  schema_version: 0.3.0
+  schema_version: "0.4.0"
+
   project:
-    project_name: 重庆区域2025-2026年米面粮油物资框架
+    project_name: "重庆区域2025-2026年米面粮油物资框架"
     procurement_domain: property_material
+    requirement_status: confirmed
+    p0_blocker_count: 0
     delivery_regions:
-    - 重庆市
-    - 贵州省
-    cooperation_period: 1年
-    payment_terms: 收货确认之日起120个自然日内支付；对账5天、开票10天、结算105天
-    quotation_basis: 综合报价，含税含运
-    contact_name: 秦臻
-    contact_phone: '13628322268'
+      - 重庆市
+      - 贵州省
+    cooperation_period: "1年"
+    payment_terms: "收货确认之日起120个自然日内支付；对账5天、开票10天、结算105天"
+    quotation_basis: "综合报价，含税含运"
+    contact_name: null
+    contact_phone: null
     contact_email: null
     response_deadline: null
+    procurement_estimated_total_amount: 523673.81
+    procurement_estimated_total_amount_source: human_confirmed
+
+  supplier_matching:
+    supplier_source: official_registry_only
+    public_supplier_discovery_allowed: false
+    official_sources_used:
+      - source_name: "重庆市物资类供应商名录.xlsx"
+        source_sheet: "Sheet1"
+        registry_tier: approved_official_registry
+      - source_name: "重庆市物资类供应商名录.xlsx"
+        source_sheet: "万科物业临时供应商"
+        registry_tier: temporary_internal_registry
+    searched_category_terms: ["食品饮品", "米面粮油"]
+    normalized_delivery_regions: ["重庆市", "贵州省"]
+    candidates: []
+    candidate_summary:
+      category_matches: 9
+      full_region_matches: 0
+      partial_region_matches: 9
+      needs_human_check: 9
+    coverage_gaps:
+      - code: official_registry_coverage_gap
+        description: "当前官方样本只能明确证明重庆覆盖，贵州覆盖需补充官方证据。"
+
+  supplier_checkpoint:
+    status: confirmed
+    confirmed_initial_supplier_pool:
+      - supplier_id: "TEST-SUP-001"
+        supplier_name: "示例供方A"
+        decision: include_for_intention_collection
+        confirmed_by_human: true
+
+  recipients:
+    selected_supplier_count: 1
+    bcc_recipients: []
+    missing_recipient_emails:
+      - supplier_id: "TEST-SUP-001"
+        supplier_name: "示例供方A"
+        reason: missing_email
+    to: null
+    cc: []
+    from: null
+
+  bid_bond:
+    rate: 0.01
+    rounding_unit: 1000
+    rounding_mode: ceiling
+    formula: "CEILING(procurement_estimated_total_amount * 0.01, 1000)"
+    raw_amount: 5236.7381
+    calculated_amount: 6000
+    amount_source: human_confirmed
+    template_cell: "Sheet1!N3"
+    template_variable: "{{投标保证金金额}}"
+    status: calculated
+
   artifacts:
     invitation_email:
-      format: markdown_or_email_body
-      template: skills/sourcing-invitation/templates/invitation-email-template.md
-      status: blocked
+      format: eml
+      filename: "重庆区域2025-2026年米面粮油物资框架-邀标邮件.eml"
+      recipient_mode: single_email_bcc
+      bcc_count: 0
+      attachments_embedded: false
+      referenced_attachment_filenames:
+        - "重庆区域2025-2026年米面粮油物资框架-最终需求清单.xlsx"
+        - "重庆区域2025-2026年米面粮油物资框架-招标意向征集登记表.xlsx"
+      status: draft_missing_recipient_email
     requirement_list:
       format: xlsx
+      filename: "重庆区域2025-2026年米面粮油物资框架-最终需求清单.xlsx"
       source: confirmed_requirement
+      external_attachment: true
+      embedded_in_eml: false
       status: generated
     supplier_intention_form:
       format: xlsx
-      template: skills/sourcing-invitation/templates/招标意向征集登记表模板.xlsx
+      filename: "重庆区域2025-2026年米面粮油物资框架-招标意向征集登记表.xlsx"
+      template: ".agents/skills/sourcing-invitation/templates/招标意向征集登记表模板.xlsx"
+      template_source_mode: copy_original_enterprise_template
+      template_integrity_preserved: true
+      external_attachment: true
+      embedded_in_eml: false
+      supplier_response_fields_left_blank: true
+      bid_bond_cell: "Sheet1!N3"
+      bid_bond_variable_replaced: true
+      bid_bond_amount_written: 6000
       status: generated
+    supplier_contact_longlist:
+      format: xlsx
+      filename: "重庆区域2025-2026年米面粮油物资框架-供方信息长名单.xlsx"
+      template: ".agents/skills/sourcing-invitation/templates/供方信息长名单模板.xlsx"
+      scope: confirmed_initial_supplier_pool
+      internal_only: true
+      external_attachment: false
+      supplier_count: 1
+      contact_record_count: 1
+      missing_contact_fields:
+        - supplier_id: "TEST-SUP-001"
+          supplier_name: "示例供方A"
+          missing_fields: [email]
+      status: generated_with_missing_contacts
+
   consistency_check:
     passed: false
     checked_fields:
-    - project_name
-    - delivery_regions
-    - payment_terms
-    - cooperation_period
-    - quotation_basis
-    - contact_name
-    - contact_phone
-    - contact_email
-    - response_deadline
+      - candidate_identity
+      - confirmed_initial_supplier_pool
+      - supplier_contacts
+      - bcc
+      - bid_bond
+      - intention_form_template
+    candidate_identity_official_only: true
+    confirmed_pool_subset_of_candidates: true
+    longlist_covers_confirmed_pool: true
+    supplier_contacts_traceable: true
+    bcc_matches_longlist: true
+    supplier_emails_only_in_bcc: true
+    eml_has_no_embedded_attachments: true
+    longlist_not_external_attachment: true
+    original_intention_form_template_preserved: true
+    procurement_estimated_total_amount_traceable: true
+    bid_bond_formula_correct: true
+    bid_bond_n3_variable_replaced: true
+    bid_bond_n3_amount_matches_calculation: true
     issues:
-    - 当前黄金样本未提供本项目回复邮箱。
-    - 当前黄金样本未提供本项目回复截止时间。
-    - 不得沿用历史邮件模板中的 qinz07@onewo.com 或 2026.8.10 作为当前项目值。
-  human_checkpoint:
+      - "示例供方A邮箱缺失，因此 EML 仅为待补邮箱草稿。"
+
+  human_send_checkpoint:
     status: pending_send_review
+    actual_attachments_added_before_send: null
+    bid_bond_amount_reviewed: null
+    longlist_reviewed: null
     notes:
-    - 补充当前项目回复邮箱和回复截止时间后，方可生成可发送邮件正文。
+      - "补充并确认供方邮箱后再执行实际发送。"

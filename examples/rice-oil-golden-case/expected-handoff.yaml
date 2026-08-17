@@ -46,4 +46,5 @@ handoff:
     confirmed: true
     note: "示例要求：区域/重复SKU拆分等关键问题已由采购员确认。"
 
-  next_skill: official-supplier-matching
+  next_skill: sourcing-invitation
+  next_phase: official_supplier_matching

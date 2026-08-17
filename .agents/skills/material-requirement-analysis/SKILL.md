@@ -1,8 +1,8 @@
 ---
 name: material-requirement-analysis
-description: 分析物业物资类采购初版需求清单，识别物料级与项目级遗漏、歧义、隐藏分拆维度及冲突，生成最少必要澄清问题；P0 阻断项全部澄清后必须生成需求清单 Excel，并输出标准需求结构化结果与后续官方供方匹配 Handoff。V1仅覆盖物业物资类采购与邀标制流程。
+description: 分析物业物资类采购初版需求清单，识别物料级与项目级遗漏、歧义、隐藏分拆维度及冲突，生成最少必要澄清问题；P0 阻断项全部澄清后必须生成需求清单 Excel，并输出标准需求结构化结果与后续 sourcing-invitation Handoff。V1仅覆盖物业物资类采购与邀标制流程。
 metadata:
-  version: "0.1.1"
+  version: "0.1.2"
   domain: "property-material-procurement"
   sourcing_method: "invitation-tender"
 ---
@@ -15,7 +15,7 @@ metadata:
 
 核心流程：
 
-`初版需求 → 需求诊断 → P0/P1/P2 → 人工澄清 → P0清零 → 需求清单.xlsx → Structured Handoff`
+`初版需求 → 需求诊断 → P0/P1/P2 → 人工澄清 → P0清零 → 需求清单.xlsx → Structured Handoff → sourcing-invitation`
 
 本 Skill 的核心不是替采购员补需求，而是：
 
@@ -24,14 +24,14 @@ metadata:
 3. 只提出影响寻源或报价可比性的必要澄清；
 4. 等待人工确认 P0；
 5. **P0 全部解除后强制生成需求清单 Excel**；
-6. 形成标准需求和 `official-supplier-matching` Handoff。
+6. 形成标准需求并交给 `sourcing-invitation`，由其先完成官方供方库匹配，再在人工确认供方后生成邀标材料。
 
 ## 2. Scope
 
 - Domain: 物业物资类采购
 - Procurement object: Goods / Materials only
 - Sourcing method: 邀标制
-- Downstream: `official-supplier-matching`
+- Downstream: `sourcing-invitation`
 - V1 excludes: 保洁、秩序、绿化、维修等服务采购
 
 ## 3. Information States
@@ -186,7 +186,7 @@ AI 不得自行猜测并改写需求。
 - 规格不足以识别物料；
 - 区域未知且影响供货能力；
 - 重复 SKU 无法判断差异；
-- 年度预计采购量缺失且没有可用的历史测算结果；
+- 年度预计采购量缺失且没有可用历史测算；
 - 评标价格口径缺失。
 
 #### P1 — Important
@@ -199,7 +199,7 @@ AI 不得自行猜测并改写需求。
 
 ### Step 9 — Clarification Questions
 
-按 P0 → P1 → P2 输出。每个问题必须说明：
+按 P0 → P1 → P2 输出。每个问题说明：
 
 - 需要确认什么；
 - 为什么重要；
@@ -210,7 +210,7 @@ AI 不得自行猜测并改写需求。
 若存在 P0：
 
 - `requirement_status` 不得为 confirmed；
-- 不进入 `official-supplier-matching`；
+- 不进入 `sourcing-invitation`；
 - 等待采购员回答。
 
 采购员回答后重新检查 P0。
@@ -221,7 +221,7 @@ P1/P2 尚未全部解决，不得成为“不生成 Excel”的理由。
 
 ### Step 11 — Mandatory Requirement Workbook Output
 
-P0 全部解除后，固定生成需求清单 Excel。
+P0 全部解除后固定生成需求清单 Excel。
 
 #### 11.1 原始输入为 Excel
 
@@ -230,7 +230,7 @@ P0 全部解除后，固定生成需求清单 Excel。
 1. 复制原需求清单为新文件；
 2. 保留原有版式、标题、公式和企业模板结构；
 3. 将采购员澄清确认内容写回对应行；
-4. 新增字段时尽量在原表结构内合理增加，不破坏原字段；
+4. 新增字段时尽量在原表结构内合理增加；
 5. 不修改原始文件本身。
 
 #### 11.2 无可复用 Excel 模板
@@ -241,22 +241,20 @@ P0 全部解除后，固定生成需求清单 Excel。
 
 #### 11.3 文件命名
 
-如果 P0 已清零，但仍有未解决 P1/P2：
+P0 已清零但仍有 P1/P2：
 
 `{{项目名称}}-澄清版需求清单.xlsx`
 
-如果当前关键需求和项目商务条件均已人工确认：
+关键需求与项目商务条件均已确认：
 
 `{{项目名称}}-最终需求清单.xlsx`
 
-#### 11.4 Excel 必须包含
-
-至少包含：
+#### 11.4 Excel 至少包含
 
 - 序号
-- 区域（涉及多区域时必须显式存在）
+- 区域（多区域时必须显式存在）
 - 名称
-- 品牌（如采购方有要求）
+- 品牌（如有要求）
 - 规格
 - 单位
 - 起订量（如有）
@@ -275,7 +273,7 @@ P0 全部解除后，固定生成需求清单 Excel。
 
 #### 11.5 供方报价字段
 
-如果原模板包含以下列，应保留但保持空白：
+原模板若包含以下列，应保留但保持空白：
 
 - 含税单价
 - 未税单价
@@ -290,7 +288,7 @@ P0 全部解除后，固定生成需求清单 Excel。
 
 - 不得隐藏；
 - 在 Excel 备注或单独“待确认事项”区域留痕；
-- 不能改变已确认的采购事实。
+- 不能改变已确认采购事实。
 
 详细规则见：`references/requirement-workbook-output-rules.md`。
 
@@ -329,7 +327,8 @@ handoff:
   assumptions: []
   human_decision:
     p0_confirmed: true
-  next_skill: official-supplier-matching
+  next_skill: sourcing-invitation
+  next_phase: official_supplier_matching
 ```
 
 如果 `requirement_workbook.generated != true`，则该 Skill 不得宣称本阶段交付完成。
@@ -350,7 +349,7 @@ handoff:
 
 ### P0 已清零
 
-**必须同时交付：**
+必须同时交付：
 
 1. 需求诊断/澄清摘要；
 2. `{{项目名称}}-澄清版需求清单.xlsx` 或 `{{项目名称}}-最终需求清单.xlsx`；
@@ -358,18 +357,18 @@ handoff:
 4. Structured Handoff；
 5. 未解决 P1/P2（如有）。
 
-缺少第 2 项 Excel 即视为 Skill 执行未完成。
+缺少 Excel 即视为 Skill 执行未完成。
 
 ## 8. Golden Case Guardrails
 
-1. “含税单价/含税总价为空”不能被判定为需求缺失；
+1. 空白供方报价列不能被判定为需求缺失；
 2. 同名同单位重复行必须触发隐藏维度检查；
-3. 历史采购显示重庆/贵州双区域时，重复 SKU 不得依赖行序猜区域；
+3. 历史采购显示多区域时，不得依赖行序猜区域；
 4. 人工澄清后的规格/区域必须进入 Excel；
 5. P0 清零后必须生成 Excel；
 6. P1/P2 不得阻断 Excel 生成；
-7. 供方报价字段必须保持空白；
-8. Excel 与 Structured Handoff 的 SKU 数量、区域、规格和数量必须一致。
+7. 供方报价字段保持空白；
+8. Excel 与 Structured Handoff 的 SKU、区域、规格和数量一致。
 
 ## 9. Human Review
 
@@ -383,10 +382,10 @@ handoff:
 
 ## 10. Success Criteria
 
-1. P0 能被准确识别并通过最少问题澄清；
+1. P0 能准确识别并通过最少问题澄清；
 2. P0 清零后必有 Excel 交付物；
 3. Excel 保留原模板风格或使用标准模板；
-4. P1/P2 未解决时能够留痕而非阻断；
+4. P1/P2 未解决时能留痕而非阻断；
 5. 供方报价字段不被预填；
 6. Excel、Requirement Schema、Handoff 三者一致；
-7. `official-supplier-matching` 可直接消费该需求清单和 Handoff。
+7. `sourcing-invitation` 可直接消费需求清单和 Handoff，并从其 Phase A 开始官方供方匹配。

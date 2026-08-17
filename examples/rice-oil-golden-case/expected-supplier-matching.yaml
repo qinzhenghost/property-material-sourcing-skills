@@ -1,7 +1,7 @@
-# 黄金案例：米面粮油需求进入官方供方库匹配
-# 注意：这是基于当前上传的重庆供方库样本形成的“候选池示例”，不是最终邀标名单。
-supplier_matching:
-  schema_version: "0.2.0"
+# 黄金案例：sourcing-invitation Phase A 官方供方库匹配
+# 注意：这是同一 sourcing-invitation Skill 内部的候选池阶段示例，不是独立 Skill，也不是最终邀标名单。
+sourcing_invitation_phase_a:
+  schema_version: "0.4.0"
 
   sourcing_policy:
     supplier_source: official_registry_only
@@ -79,50 +79,6 @@ supplier_matching:
       registry_status: unknown
       recommended_action: include_for_human_review
 
-    - supplier_name: "重庆海馨果商贸有限公司"
-      supplier_id: "CQ-WZ-VS-149"
-      official_category:
-        level_2_type: "食品饮品"
-        level_3_type: "米面粮油"
-      official_coverage_regions: ["重庆"]
-      category_result: exact
-      region_result: partial
-      registry_status: unknown
-      recommended_action: include_for_human_review
-
-    - supplier_name: "重庆商社新世纪百货连锁经营有限公司"
-      supplier_id: "CQ-WZ-VS-205"
-      official_category:
-        level_2_type: "食品饮品"
-        level_3_type: "米面粮油"
-      official_coverage_regions: ["重庆"]
-      category_result: exact
-      region_result: partial
-      registry_status: unknown
-      recommended_action: include_for_human_review
-
-    - supplier_name: "英芮达（重庆）商贸有限公司"
-      supplier_id: "CQ-WZ-VS-227"
-      official_category:
-        level_2_type: "文体宣传/食品饮品"
-        level_3_type: "节庆饰品,礼品定制,米面粮油"
-      official_coverage_regions: ["重庆"]
-      category_result: compatible
-      region_result: partial
-      registry_status: unknown
-      recommended_action: include_for_human_review
-
-    - supplier_name: "重庆哈鑫康业食品有限公司"
-      supplier_id: "CQ-WZ-VS-228"
-      official_category:
-        level_2_type: "食品饮品"
-        level_3_type: "米面粮油"
-      official_coverage_regions: ["重庆"]
-      category_result: exact
-      region_result: partial
-      registry_status: unknown
-      recommended_action: include_for_human_review
-
   coverage_gap:
     code: official_registry_coverage_gap
     description: >-
@@ -134,7 +90,7 @@ supplier_matching:
       - "由采购员决定是否按区域拆分寻源。"
 
   human_checkpoint:
-    status: pending
-    allowed_next_action: review_candidate_pool
+    status: pending_supplier_confirmation
+    allowed_next_action: confirm_initial_supplier_pool
     notes:
-      - "当前结果只用于采购员审核，不得直接发送邀标。"
+      - "当前结果只用于采购员审核，未确认前不得进入 Phase B 生成邀标四件套。"

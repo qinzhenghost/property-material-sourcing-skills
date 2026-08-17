@@ -1,16 +1,17 @@
 $schema: "https://json-schema.org/draft/2020-12/schema"
 $id: "https://example.local/schemas/property-material-sourcing-invitation-package.schema.yaml"
-title: "物业物资邀标沟通三件套"
+title: "物业物资官方供方寻源与邀标包"
 description: >-
-  official-supplier-matching 经人工确认后，由 sourcing-invitation 生成的标准输出包。
-  固定包含一个 BCC 群发 EML 草稿和两个独立 Excel 文件；EML 不嵌入附件且不得自动发送。
-  招标意向征集登记表必须基于企业原始模板副本生成并保持模板完整性；Sheet1!N3 的投标保证金
-  按采购清单预估总金额的 1% 计算并向上取整至 1000 元整数倍。
+  sourcing-invitation v0.4.0 的统一结构化结果。Phase A 记录企业官方供方库匹配、
+  Hard Gate、候选池与人工确认；Phase B 在人工确认初版供方后生成单一 BCC EML、
+  最终需求清单、企业原版招标意向征集登记表和内部供方信息长名单。
 type: object
 additionalProperties: false
 required:
   - schema_version
   - project
+  - supplier_matching
+  - supplier_checkpoint
   - recipients
   - bid_bond
   - artifacts
@@ -18,15 +19,27 @@ required:
 properties:
   schema_version:
     type: string
-    const: "0.3.3"
+    const: "0.4.0"
 
   project:
     type: object
     additionalProperties: false
-    required: [project_name, procurement_domain, delivery_regions]
+    required: [project_name, procurement_domain, delivery_regions, p0_blocker_count]
     properties:
       project_name: {type: string}
       procurement_domain: {type: string, const: property_material}
+      requirement_status:
+        type: string
+        enum: [clarified, confirmed, clarified_or_confirmed]
+      p0_blocker_count: {type: integer, const: 0}
+      category_path:
+        type: object
+        additionalProperties: false
+        properties:
+          level_1: {type: [string, "null"]}
+          level_2: {type: [string, "null"]}
+          level_3: {type: [string, "null"]}
+          evidence: {type: [string, "null"]}
       delivery_regions:
         type: array
         minItems: 1
@@ -41,7 +54,6 @@ properties:
       procurement_estimated_total_amount:
         type: [number, "null"]
         minimum: 0
-        description: "当前项目可追溯的采购清单预估总金额；不得使用供应商未填写的报价列推断。"
       procurement_estimated_total_amount_source:
         type: [string, "null"]
         enum:
@@ -51,12 +63,126 @@ properties:
           - human_confirmed
           - null
 
+  supplier_matching:
+    type: object
+    additionalProperties: false
+    required:
+      - supplier_source
+      - public_supplier_discovery_allowed
+      - official_sources_used
+      - candidates
+      - candidate_summary
+      - coverage_gaps
+    properties:
+      supplier_source: {type: string, const: official_registry_only}
+      public_supplier_discovery_allowed: {type: boolean, const: false}
+      official_sources_used:
+        type: array
+        minItems: 1
+        items:
+          type: object
+          additionalProperties: false
+          required: [source_name, registry_tier]
+          properties:
+            source_name: {type: string}
+            source_sheet: {type: [string, "null"]}
+            source_date: {type: [string, "null"]}
+            registry_tier:
+              type: string
+              enum:
+                - approved_official_registry
+                - temporary_internal_registry
+                - unknown_internal_registry
+            notes:
+              type: array
+              items: {type: string}
+      searched_category_terms:
+        type: array
+        items: {type: string}
+      normalized_delivery_regions:
+        type: array
+        items: {type: string}
+      candidates:
+        type: array
+        items:
+          $ref: "#/$defs/candidate"
+      excluded_records:
+        type: array
+        items:
+          type: object
+          additionalProperties: false
+          required: [supplier_name, reason]
+          properties:
+            supplier_id: {type: [string, "null"]}
+            supplier_name: {type: string}
+            reason: {type: string}
+            evidence:
+              type: array
+              items: {type: string}
+      candidate_summary:
+        type: object
+        additionalProperties: false
+        properties:
+          total_records_searched: {type: integer, minimum: 0}
+          category_matches: {type: integer, minimum: 0}
+          full_region_matches: {type: integer, minimum: 0}
+          partial_region_matches: {type: integer, minimum: 0}
+          needs_human_check: {type: integer, minimum: 0}
+          excluded: {type: integer, minimum: 0}
+      coverage_gaps:
+        type: array
+        items:
+          type: object
+          additionalProperties: false
+          required: [code, description]
+          properties:
+            code:
+              type: string
+              enum:
+                - official_registry_coverage_gap
+                - region_coverage_gap
+                - category_coverage_gap
+                - competition_gap
+                - registry_data_quality_gap
+            description: {type: string}
+            required_action:
+              type: array
+              items: {type: string}
+
+  supplier_checkpoint:
+    type: object
+    additionalProperties: false
+    required: [status, confirmed_initial_supplier_pool]
+    properties:
+      status:
+        type: string
+        enum: [pending_supplier_confirmation, confirmed]
+      confirmed_initial_supplier_pool:
+        type: array
+        items:
+          type: object
+          additionalProperties: false
+          required: [supplier_name, decision]
+          properties:
+            supplier_id: {type: [string, "null"]}
+            supplier_name: {type: string}
+            decision:
+              type: string
+              enum: [include_for_intention_collection, exclude, hold, request_more_official_data]
+            confirmed_by_human: {type: boolean}
+            notes:
+              type: array
+              items: {type: string}
+      notes:
+        type: array
+        items: {type: string}
+
   recipients:
     type: object
     additionalProperties: false
     required: [selected_supplier_count, bcc_recipients, missing_recipient_emails]
     properties:
-      selected_supplier_count: {type: integer, minimum: 1}
+      selected_supplier_count: {type: integer, minimum: 0}
       bcc_recipients:
         type: array
         items:
@@ -67,6 +193,7 @@ properties:
             supplier_id: {type: [string, "null"]}
             supplier_name: {type: string}
             contact_name: {type: [string, "null"]}
+            phone: {type: [string, "null"]}
             email: {type: string}
             source: {type: string, enum: [official_registry, human_confirmed]}
       missing_recipient_emails:
@@ -78,10 +205,12 @@ properties:
           properties:
             supplier_id: {type: [string, "null"]}
             supplier_name: {type: string}
-            reason: {type: string, enum: [missing_email, email_source_unconfirmed, conflicting_email]}
+            reason:
+              type: string
+              enum: [missing_email, email_source_unconfirmed, conflicting_email]
       to:
         type: [string, "null"]
-        description: "不得填供方邮箱；仅可使用采购方明确提供的本方发送/归档地址。"
+        description: "仅可为采购方明确提供的本方发送/归档邮箱；不得填写供方邮箱。"
       cc:
         type: array
         items: {type: string}
@@ -90,52 +219,30 @@ properties:
   bid_bond:
     type: object
     additionalProperties: false
-    required:
-      - rate
-      - rounding_unit
-      - rounding_mode
-      - template_cell
-      - template_variable
-      - status
+    required: [rate, rounding_unit, rounding_mode, template_cell, template_variable, status]
     properties:
-      rate:
-        type: number
-        const: 0.01
-      rounding_unit:
-        type: integer
-        const: 1000
-      rounding_mode:
-        type: string
-        const: ceiling
+      rate: {type: number, const: 0.01}
+      rounding_unit: {type: integer, const: 1000}
+      rounding_mode: {type: string, const: ceiling}
       formula:
         type: string
         const: "CEILING(procurement_estimated_total_amount * 0.01, 1000)"
-      raw_amount:
-        type: [number, "null"]
-        minimum: 0
+      raw_amount: {type: [number, "null"], minimum: 0}
       calculated_amount:
         type: [integer, "null"]
         minimum: 0
         multipleOf: 1000
-      amount_source:
-        type: [string, "null"]
-      template_cell:
-        type: string
-        const: "Sheet1!N3"
-      template_variable:
-        type: string
-        const: "{{投标保证金金额}}"
+      amount_source: {type: [string, "null"]}
+      template_cell: {type: string, const: "Sheet1!N3"}
+      template_variable: {type: string, const: "{{投标保证金金额}}"}
       status:
         type: string
-        enum:
-          - calculated
-          - missing_procurement_estimated_total_amount
-          - blocked
+        enum: [calculated, missing_procurement_estimated_total_amount, blocked]
 
   artifacts:
     type: object
     additionalProperties: false
-    required: [invitation_email, requirement_list, supplier_intention_form]
+    required: [invitation_email, requirement_list, supplier_intention_form, supplier_contact_longlist]
     properties:
       invitation_email:
         type: object
@@ -153,22 +260,25 @@ properties:
             minItems: 2
             maxItems: 2
             items: {type: string}
-          template: {type: [string, "null"]}
           status:
             type: string
-            enum: [ready_for_human_review, draft_missing_recipient_email, draft_recipient_email_conflict, blocked]
-
+            enum:
+              - not_generated_pending_supplier_confirmation
+              - ready_for_human_review
+              - draft_missing_recipient_email
+              - draft_recipient_email_conflict
+              - blocked
       requirement_list:
         type: object
         additionalProperties: false
-        required: [format, filename, source, status]
+        required: [format, filename, source, external_attachment, status]
         properties:
           format: {type: string, const: xlsx}
           filename: {type: string}
           source: {type: string, const: confirmed_requirement}
+          external_attachment: {type: boolean, const: true}
           embedded_in_eml: {type: boolean, const: false}
           status: {type: string, enum: [generated, blocked]}
-
       supplier_intention_form:
         type: object
         additionalProperties: false
@@ -178,34 +288,64 @@ properties:
           - template
           - template_source_mode
           - template_integrity_preserved
+          - external_attachment
           - bid_bond_cell
-          - bid_bond_variable_replaced
           - status
         properties:
           format: {type: string, const: xlsx}
           filename: {type: string}
           template: {type: string}
           template_source_mode: {type: string, const: copy_original_enterprise_template}
-          template_integrity_preserved: {type: boolean, const: true}
+          template_integrity_preserved: {type: boolean}
+          external_attachment: {type: boolean, const: true}
           embedded_in_eml: {type: boolean, const: false}
-          populated_project_fields:
-            type: array
-            items: {type: string}
-          supplier_response_fields_left_blank:
-            type: boolean
-            const: true
-          bid_bond_cell:
-            type: string
-            const: "Sheet1!N3"
-          bid_bond_variable_replaced:
-            type: boolean
+          supplier_response_fields_left_blank: {type: boolean, const: true}
+          bid_bond_cell: {type: string, const: "Sheet1!N3"}
+          bid_bond_variable_replaced: {type: boolean}
           bid_bond_amount_written:
             type: [integer, "null"]
             minimum: 0
             multipleOf: 1000
           status:
             type: string
-            enum: [generated, blocked_missing_estimated_total_amount, blocked_template_integrity, blocked_bid_bond_mismatch]
+            enum:
+              - not_generated_pending_supplier_confirmation
+              - generated
+              - blocked_missing_estimated_total_amount
+              - blocked_template_integrity
+              - blocked_bid_bond_mismatch
+      supplier_contact_longlist:
+        type: object
+        additionalProperties: false
+        required: [format, filename, scope, internal_only, external_attachment, status]
+        properties:
+          format: {type: string, const: xlsx}
+          filename: {type: string}
+          template: {type: [string, "null"]}
+          scope: {type: string, const: confirmed_initial_supplier_pool}
+          internal_only: {type: boolean, const: true}
+          external_attachment: {type: boolean, const: false}
+          supplier_count: {type: integer, minimum: 0}
+          contact_record_count: {type: integer, minimum: 0}
+          missing_contact_fields:
+            type: array
+            items:
+              type: object
+              additionalProperties: false
+              required: [supplier_name, missing_fields]
+              properties:
+                supplier_id: {type: [string, "null"]}
+                supplier_name: {type: string}
+                missing_fields:
+                  type: array
+                  items: {type: string, enum: [contact_name, phone, email]}
+          status:
+            type: string
+            enum:
+              - not_generated_pending_supplier_confirmation
+              - generated
+              - generated_with_missing_contacts
+              - blocked
 
   consistency_check:
     type: object
@@ -216,9 +356,14 @@ properties:
       checked_fields:
         type: array
         items: {type: string}
+      candidate_identity_official_only: {type: boolean}
+      confirmed_pool_subset_of_candidates: {type: boolean}
+      longlist_covers_confirmed_pool: {type: boolean}
+      supplier_contacts_traceable: {type: boolean}
+      bcc_matches_longlist: {type: boolean}
       supplier_emails_only_in_bcc: {type: boolean}
       eml_has_no_embedded_attachments: {type: boolean}
-      attachment_filenames_match_body: {type: boolean}
+      longlist_not_external_attachment: {type: boolean}
       original_intention_form_template_preserved: {type: boolean}
       procurement_estimated_total_amount_traceable: {type: boolean}
       bid_bond_formula_correct: {type: boolean}
@@ -228,13 +373,59 @@ properties:
         type: array
         items: {type: string}
 
-  human_checkpoint:
+  human_send_checkpoint:
     type: object
     additionalProperties: false
     properties:
-      status: {type: string, enum: [pending_send_review, approved_to_send]}
+      status:
+        type: string
+        enum: [not_reached, pending_send_review, approved_to_send]
       actual_attachments_added_before_send: {type: [boolean, "null"]}
       bid_bond_amount_reviewed: {type: [boolean, "null"]}
+      longlist_reviewed: {type: [boolean, "null"]}
       notes:
         type: array
         items: {type: string}
+
+$defs:
+  candidate:
+    type: object
+    additionalProperties: false
+    required: [supplier_name, registry_tier, hard_gate, overall_result, evidence]
+    properties:
+      supplier_id: {type: [string, "null"]}
+      supplier_name: {type: string}
+      registry_tier:
+        type: string
+        enum: [approved_official_registry, temporary_internal_registry, unknown_internal_registry]
+      hard_gate:
+        type: object
+        additionalProperties: false
+        required: [material_supplier, category, region, qualification, registry_status]
+        properties:
+          material_supplier:
+            type: string
+            enum: [pass, no_match, unknown]
+          category:
+            type: string
+            enum: [exact, compatible, partial, no_match, unknown]
+          region:
+            type: string
+            enum: [full, partial, no_match, unknown]
+          qualification:
+            type: string
+            enum: [pass, needs_human_check, expired, not_required, unknown]
+          registry_status:
+            type: string
+            enum: [pass, blocked, unknown]
+      overall_result:
+        type: string
+        enum: [eligible_for_review, partial_match_for_review, needs_human_check, ineligible]
+      fit_summary: {type: [string, "null"]}
+      evidence:
+        type: array
+        minItems: 1
+        items: {type: string}
+      official_contact_name: {type: [string, "null"]}
+      official_phone: {type: [string, "null"]}
+      official_email: {type: [string, "null"]}
