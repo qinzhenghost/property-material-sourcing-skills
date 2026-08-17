@@ -1,0 +1,4 @@
+sourcing-invitation-template-version: 0.3.3
+cell: Sheet1!N3
+variable: {{投标保证金金额}}
+formula: CEILING(procurement_estimated_total_amount * 0.01, 1000)
