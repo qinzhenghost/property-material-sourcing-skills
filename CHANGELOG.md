@@ -1,5 +1,20 @@
 # CHANGELOG
 
+## v0.7.5
+
+`material-requirement-analysis` 升级为 `0.1.1`：
+
+- P0 阻断项全部解除后，需求清单 Excel 变为强制交付物；
+- 若仍有 P1/P2，输出 `{{项目名称}}-澄清版需求清单.xlsx`；
+- 关键需求及项目商务条件均确认后，输出 `{{项目名称}}-最终需求清单.xlsx`；
+- P1/P2 非阻断事项必须留痕，但不得阻止 Excel 生成；
+- 输入本身为 Excel 时优先复制原文件并保留企业版式，不覆盖原始文件；
+- 无可复用模板时使用 `templates/标准需求清单模板.xlsx`；
+- 新增 `references/requirement-workbook-output-rules.md`；
+- 供方报价列（含税单价/未税单价/税率/含税总价）保持空白，不得写入历史价、旧报价或 AI 测算价；
+- P0 清零后若只有文字/YAML/JSON而没有 Excel，则 Skill 执行状态视为 `incomplete`；
+- README 与 Codex 测试示例同步更新。
+
 ## v0.7.4
 
 `historical-procurement-analysis` 升级为 `0.5.5`：
