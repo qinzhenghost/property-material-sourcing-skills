@@ -1,4 +1,4 @@
-# Property Material Sourcing Skills — v0.7.5
+# Property Material Sourcing Skills — v0.7.6
 
 物业物资类 AI 邀标寻源 Skill 库。
 
@@ -40,8 +40,15 @@ material-requirement-analysis
         └─ Structured Handoff
         ↓
 official-supplier-matching
+        ├─ 官方供方库匹配
+        └─ 采购员确认邀标沟通供方
         ↓
 sourcing-invitation
+        ├─ 1个 BCC 群发邀标邮件.eml
+        ├─ 最终需求清单.xlsx（独立交付）
+        └─ 招标意向征集登记表.xlsx（独立交付）
+        ↓
+人工审核并实际添加两个附件后发送
         ↓
 supplier-shortlist
         ↓
@@ -59,7 +66,7 @@ sourcing-strategy
 | `historical-procurement-analysis` | 协议选择、有效订单过滤、12个月年化、年度增量、历史测算需求清单 | ✅ |
 | `material-requirement-analysis` | 需求诊断、P0澄清、强制生成澄清/最终需求清单 Excel | ✅ |
 | `official-supplier-matching` | 仅从官方供方库匹配候选供方 | ✅ |
-| `sourcing-invitation` | 生成邀标三件套 | ✅ |
+| `sourcing-invitation` | 生成单一 BCC EML + 两个独立 Excel | ✅ |
 | `supplier-shortlist` | 根据供方回复生成短名单表 | ✅ |
 | `shortlist-approval` | 短名单报批邮件及策略 Handoff | ✅ |
 | `sourcing-strategy` | 生成采购方案/策略报告 | ✅ |
@@ -80,57 +87,48 @@ sourcing-strategy
 
 ## material-requirement-analysis v0.1.1
 
-### P0 未清零
+P0 未清零时可以只输出诊断与澄清问题。
 
-可以只输出：
+P0 清零后必须生成 Excel：
 
-- 需求诊断摘要；
-- P0/P1/P2；
-- 澄清问题；
-- 当前阻断原因。
-
-此时允许暂不生成 Excel。
-
-### P0 已清零
-
-**必须生成 Excel，只有文字/YAML/JSON 不算完成。**
-
-如果仍有 P1/P2：
-
-```text
-{{项目名称}}-澄清版需求清单.xlsx
-```
-
-如果关键需求及项目商务条件均已确认：
-
-```text
-{{项目名称}}-最终需求清单.xlsx
-```
+- 仍有 P1/P2：`{{项目名称}}-澄清版需求清单.xlsx`
+- 关键事项全部确认：`{{项目名称}}-最终需求清单.xlsx`
 
 模板优先级：
 
-1. 用户原始 Excel 的副本，优先保留企业原版式；
+1. 用户原始 Excel 的副本；
 2. 当前项目企业模板；
 3. `.agents/skills/material-requirement-analysis/templates/标准需求清单模板.xlsx`。
 
-P1/P2 尚未解决时应在备注/待确认事项中留痕，但**不能阻止 Excel 生成**。
+供方报价字段保持空白。
 
-供方报价字段如含税单价、未税单价、税率、含税总价应保留为空，不得预填历史价、旧报价或 AI 测算价。
+## sourcing-invitation v0.3.1
 
-## Codex 测试：material-requirement-analysis
+固定只生成三个独立文件：
 
 ```text
-$material-requirement-analysis
+{{项目名称}}-邀标邮件.eml
+{{项目名称}}-最终需求清单.xlsx
+{{项目名称}}-招标意向征集登记表.xlsx
+```
 
-分析我的初版需求清单。
-先完成 P0/P1/P2 诊断。
-我回答 P0 后重新检查：
-- 如果 P0 仍 > 0，继续澄清；
-- 如果 P0 = 0，必须生成需求清单 Excel；
-- 有 P1/P2 时生成“澄清版需求清单.xlsx”；
-- 全部关键项确认时生成“最终需求清单.xlsx”；
-- 同时输出 Structured Handoff；
-- 供方报价字段保持空白。
+邮件规则：
+
+- 只生成 1 个 EML；
+- 所有人工确认且邮箱已确认的供方统一放入 `Bcc`；
+- 供方不得出现在 `To` 或 `Cc`；
+- 缺失/冲突的供方邮箱不得猜测，必须提示人工补充或确认；
+- `To` 仅可使用采购方明确提供的本方发送/归档邮箱，否则留空；
+- `Cc` 仅使用采购员明确确认的内部邮箱；
+- EML 不嵌入两个 Excel；
+- 正文只引用两个 Excel 文件名；
+- 两个 Excel 单独交付，由采购员实际发送前人工添加为附件；
+- 不自动发送邮件。
+
+规则文件：
+
+```text
+.agents/skills/sourcing-invitation/references/eml-delivery-rules.md
 ```
 
 ## 核心原则
@@ -144,16 +142,20 @@ $material-requirement-analysis
 7. 需求分析 P0 清零后必须生成 Excel。
 8. P1/P2 不得阻断澄清版需求清单生成。
 9. 需求字段和供方报价字段严格分离。
-10. AI计算、历史事实、假设和人工确认必须分开记录。
-11. 最终需求数量、候选供方、短名单、预算及定标规则由采购员确认。
+10. 邀标邮件只生成一个 EML，并使用 BCC 隐藏供方邮箱。
+11. 邀标 EML 不嵌入附件，两个 Excel 独立交付。
+12. AI计算、历史事实、假设和人工确认必须分开记录。
+13. 最终需求数量、候选供方、短名单、预算及定标规则由采购员确认。
 
-## v0.7.5
+## v0.7.6
 
-- `material-requirement-analysis` 升级至 v0.1.1；
-- 新增 P0 清零后的 Mandatory Requirement Workbook Output；
-- P0=0 且仍有 P1/P2 时输出“澄清版需求清单.xlsx”；
-- 关键事项全部确认后输出“最终需求清单.xlsx”；
-- 原始 Excel 优先复制并保留版式，不覆盖原文件；
-- 新增标准需求清单模板；
-- 新增 `references/requirement-workbook-output-rules.md`；
-- 只有文字/Structured Handoff 而无 Excel 时，P0 清零后的 Skill 执行视为 incomplete。
+- `sourcing-invitation` 升级至 v0.3.1；
+- 邮件正式交付物由 Markdown 正文升级为 `.eml` 草稿；
+- 每个项目只生成一个 EML；
+- 已确认供方邮箱统一写入 BCC；
+- 禁止供方邮箱进入 To/Cc；
+- 缺邮箱/冲突邮箱必须人工补充或确认，不得猜测；
+- EML 不嵌入附件；
+- 最终需求清单与招标意向征集登记表继续作为两个独立 Excel 文件交付；
+- 新增 `references/eml-delivery-rules.md`；
+- `sourcing-invitation-package.schema.yaml` 升级至 v0.3.1。
