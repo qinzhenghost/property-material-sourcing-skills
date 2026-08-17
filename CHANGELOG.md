@@ -1,5 +1,15 @@
 # CHANGELOG
 
+## v0.7.1
+
+仓库结构调整：
+
+- 新增 `.agents/skills/`，作为 Codex 仓库级 Skill 的主运行入口；
+- 已将 7 个现有子 Skill 完整映射到 `.agents/skills/`；
+- `skills/` 暂时保留用于历史兼容和旧链接，v1.0 稳定后再决定是否移除；
+- README 新增 Codex 安装、`/skills` / `$skill-name` 显式调用及单 Skill 测试说明；
+- 当前阶段优先进行各子 Skill 的正常案例、缺失数据案例和 Guardrail 反例测试，不急于实现 Parent Router。
+
 ## v0.7.0
 
 新增：
