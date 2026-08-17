@@ -2,15 +2,15 @@ $schema: "https://json-schema.org/draft/2020-12/schema"
 $id: "https://example.local/schemas/historical-procurement.schema.yaml"
 title: "物业物资历史采购分析"
 description: >-
-  用于把历史采购数量、采购金额、单价、采购规模及其同比变化转换为可追溯的需求数量/金额基线，
-  并向标准需求清单和采购策略报告提供结构化 Handoff。不得在缺乏历史数据或明确业务规模依据时
-  自行制造增长率、采购量或采购金额。
+  对历史订单先执行订单状态过滤，仅保留已完成和执行中订单，随后分析历史采购数量、金额、单价、区域和采购规模变化，
+  形成可追溯的需求数量/金额基线，并输出结构化 Handoff 和标准需求清单草稿。
 type: object
 additionalProperties: false
 required:
   - schema_version
   - procurement_domain
   - source
+  - order_status_filter
   - analysis_scope
   - historical_records
   - projection
@@ -19,7 +19,7 @@ required:
 properties:
   schema_version:
     type: string
-    const: "0.5.0"
+    const: "0.5.3"
   procurement_domain:
     type: string
     const: "property_material"
@@ -39,6 +39,39 @@ properties:
       source_quality:
         type: string
         enum: [high, medium, low, unknown]
+      notes:
+        type: array
+        items: {type: string}
+  order_status_filter:
+    type: object
+    additionalProperties: false
+    required:
+      - filter_status
+      - allowed_statuses
+      - status_field
+      - notes
+    properties:
+      filter_status:
+        type: string
+        enum: [applied, missing_status_field, user_confirmed_prefiltered]
+      status_field:
+        type: [string, "null"]
+      allowed_statuses:
+        const: ["已完成", "执行中"]
+      total_rows: {type: [integer, "null"], minimum: 0}
+      included_rows: {type: [integer, "null"], minimum: 0}
+      excluded_rows: {type: [integer, "null"], minimum: 0}
+      included_order_count: {type: [integer, "null"], minimum: 0}
+      excluded_order_count: {type: [integer, "null"], minimum: 0}
+      excluded_by_status:
+        type: array
+        items:
+          type: object
+          additionalProperties: false
+          required: [status, count]
+          properties:
+            status: {type: string}
+            count: {type: integer, minimum: 0}
       notes:
         type: array
         items: {type: string}
@@ -71,8 +104,8 @@ properties:
       current_or_target_period: {type: [string, "null"]}
       previous_scale: {type: [number, "null"]}
       current_or_target_scale: {type: [number, "null"]}
-      scale_unit: {type: [string, "null"], description: "如项目数、管理面积、服务户数、采购点位数等。"}
-      yoy_growth_rate: {type: [number, "null"], description: "小数表示，例如 0.08 表示增长 8%。"}
+      scale_unit: {type: [string, "null"]}
+      yoy_growth_rate: {type: [number, "null"]}
       growth_basis:
         type: string
         enum: [official_business_plan, official_scale_data, user_confirmed_assumption, historical_trend_only, unavailable]
@@ -110,7 +143,7 @@ properties:
   requirement_handoff:
     type: object
     additionalProperties: false
-    required: [quantity_updates]
+    required: [quantity_updates, requirement_workbook_output]
     properties:
       quantity_updates:
         type: array
@@ -120,6 +153,7 @@ properties:
           required: [item_key, quantity_source, suggested_estimated_quantity, evidence]
           properties:
             item_key: {type: string}
+            region: {type: [string, "null"]}
             quantity_source:
               type: string
               enum: [historical_actual, historical_projected, manual_adjustment]
@@ -150,10 +184,36 @@ properties:
           notes:
             type: array
             items: {type: string}
+      requirement_workbook_output:
+        type: object
+        additionalProperties: false
+        required:
+          - template_path
+          - output_filename
+          - output_status
+          - populated_fields
+          - supplier_response_fields_left_blank
+        properties:
+          template_path: {type: string}
+          output_filename: {type: string}
+          output_status:
+            type: string
+            enum: [generated, generated_with_pending_quantities, blocked]
+          populated_fields:
+            type: array
+            items: {type: string}
+          supplier_response_fields_left_blank:
+            const: ["含税单价", "未税单价", "税率", "含税总价"]
+          notes:
+            type: array
+            items: {type: string}
   strategy_report_handoff:
     type: object
     additionalProperties: false
     properties:
+      order_filter_summary:
+        type: array
+        items: {type: string}
       spend_analysis:
         type: array
         items:
@@ -182,7 +242,6 @@ properties:
         items: {type: string}
       report_ready_facts:
         type: array
-        description: "可直接进入采购策略报告的事实句；每条都必须能追溯到数据源。"
         items:
           type: object
           additionalProperties: false
@@ -197,6 +256,7 @@ properties:
     type: object
     additionalProperties: false
     properties:
+      order_filter_reviewed: {type: boolean}
       projection_reviewed: {type: boolean}
       quantity_updates_confirmed: {type: boolean}
       reviewer_notes:
@@ -209,7 +269,7 @@ $defs:
     required: [period, item_key, item_name, unit]
     properties:
       period: {type: string}
-      item_key: {type: string, description: "用于跨年度识别同一 SKU 的稳定键；应基于名称+品牌+规格+单位等字段形成。"}
+      item_key: {type: string}
       item_name: {type: string}
       brand: {type: [string, "null"]}
       specification: {type: [string, "null"]}
@@ -217,6 +277,9 @@ $defs:
       region: {type: [string, "null"]}
       project: {type: [string, "null"]}
       supplier: {type: [string, "null"]}
+      source_order_status:
+        type: [string, "null"]
+        enum: ["已完成", "执行中", null]
       actual_quantity: {type: [number, "null"], minimum: 0}
       actual_amount: {type: [number, "null"], minimum: 0}
       average_unit_price: {type: [number, "null"], minimum: 0}
@@ -232,6 +295,7 @@ $defs:
     required: [item_key, baseline_period, unit, projection_method]
     properties:
       item_key: {type: string}
+      region: {type: [string, "null"]}
       baseline_period: {type: string}
       baseline_quantity: {type: [number, "null"], minimum: 0}
       unit: {type: string}

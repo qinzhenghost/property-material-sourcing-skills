@@ -1,6 +1,5 @@
-# 仅用于验证公式和 Handoff 结构，不代表真实项目数据。
 historical_procurement_analysis:
-  schema_version: "0.5.0"
+  schema_version: "0.5.3"
   procurement_domain: property_material
 
   source:
@@ -12,23 +11,54 @@ historical_procurement_analysis:
     notes:
       - "本文件仅为结构示例。"
 
+  order_status_filter:
+    filter_status: applied
+    status_field: "订单状态"
+    allowed_statuses:
+      - "已完成"
+      - "执行中"
+    total_rows: 120
+    included_rows: 100
+    excluded_rows: 20
+    included_order_count: 80
+    excluded_order_count: 15
+    excluded_by_status:
+      - status: "已取消"
+        count: 12
+      - status: "已退货"
+        count: 8
+    notes:
+      - "所有历史统计均基于过滤后的100条有效明细。"
+
   analysis_scope:
     project_name: "示例物资续采项目"
+    category_path:
+      level_1: "物资类"
+      level_2: null
+      level_3: null
+    regions:
+      - "重庆市"
     baseline_period: "2025"
     target_period: "2026"
 
   historical_records:
     - period: "2025"
-      item_key: "SKU-A|品牌A|5L|桶"
+      item_key: "SKU-A|品牌A|5L|桶|重庆市"
       item_name: "示例物资A"
       brand: "品牌A"
       specification: "5L"
       unit: "桶"
+      region: "重庆市"
+      project: null
+      supplier: null
+      source_order_status: "已完成"
       actual_quantity: 10000
       actual_amount: 500000
       average_unit_price: 50
       tax_basis: tax_included
+      source_row_reference: null
       anomaly_flag: false
+      anomaly_reason: null
 
   scale_analysis:
     previous_period: "2025"
@@ -48,11 +78,13 @@ historical_procurement_analysis:
     price_growth_rate_used: 0
     price_growth_basis: latest_actual
     item_projections:
-      - item_key: "SKU-A|品牌A|5L|桶"
+      - item_key: "SKU-A|品牌A|5L|桶|重庆市"
+        region: "重庆市"
         baseline_period: "2025"
         baseline_quantity: 10000
         unit: "桶"
         scale_growth_rate: 0.08
+        manual_quantity_adjustment_rate: null
         projected_quantity: 10800
         baseline_unit_price: 50
         price_growth_rate: 0
@@ -61,7 +93,7 @@ historical_procurement_analysis:
         projected_amount: 540000
         projection_method: last_full_year_adjusted_by_scale
         evidence:
-          - "2025实际采购量10000桶。"
+          - "2025过滤后的有效订单实际采购量10000桶。"
           - "2026采购规模同比增长8%。"
         notes: []
     projected_total_amount: 540000
@@ -69,12 +101,14 @@ historical_procurement_analysis:
     confidence: medium
     confidence_reasons:
       - "仅有一个完整年度历史数据。"
+      - "订单状态已过滤。"
       - "规模增幅已由采购员确认。"
     warnings: []
 
   requirement_handoff:
     quantity_updates:
-      - item_key: "SKU-A|品牌A|5L|桶"
+      - item_key: "SKU-A|品牌A|5L|桶|重庆市"
+        region: "重庆市"
         quantity_source: historical_projected
         baseline_quantity: 10000
         baseline_period: "2025"
@@ -85,16 +119,37 @@ historical_procurement_analysis:
         amount_basis: "10800桶 × 50元/桶"
         confidence: medium
         evidence:
-          - "2025实际采购量10000桶。"
-          - "2026规模增长率8%。"
+          - "仅统计已完成/执行中订单。"
+          - "2025有效订单实际采购量10000桶。"
         human_confirmation_status: pending
     project_level_updates:
       projected_total_amount: 540000
-      projection_basis: "上一完整年度实际量按采购规模增长8%测算"
+      projection_basis: "上一完整年度有效订单实际量按采购规模增长8%测算"
       growth_rate: 0.08
       notes: []
+    requirement_workbook_output:
+      template_path: ".agents/skills/historical-procurement-analysis/templates/需求清单模板.xlsx"
+      output_filename: "示例物资续采项目-历史测算需求清单.xlsx"
+      output_status: generated
+      populated_fields:
+        - "序号"
+        - "区域"
+        - "名称"
+        - "品牌"
+        - "规格"
+        - "单位"
+        - "年度预计采购量"
+      supplier_response_fields_left_blank:
+        - "含税单价"
+        - "未税单价"
+        - "税率"
+        - "含税总价"
+      notes:
+        - "历史参考单价50元仅用于内部金额测算，不写入供方报价列。"
 
   strategy_report_handoff:
+    order_filter_summary:
+      - "原始120条明细，保留已完成/执行中100条，剔除20条非有效状态记录。"
     spend_analysis:
       - period: "2025"
         total_quantity: 10000
@@ -102,24 +157,21 @@ historical_procurement_analysis:
         yoy_quantity_change: null
         yoy_amount_change: null
     price_analysis:
-      - "2025平均含税单价50元/桶。"
+      - "2025有效订单平均含税单价50元/桶。"
     demand_projection_basis:
       - "2026采购规模较2025同比预计增长8%。"
-      - "预计采购量按2025实际量上浮8%测算。"
     key_findings:
       - "示例SKU 2026预计采购量为10800桶。"
     concentration_findings: []
     risk_flags:
       - "当前仅有一个完整年度历史数据，预测可信度为中。"
     report_ready_facts:
-      - fact: "2025年度示例SKU实际采购量为10000桶，采购金额为50万元。"
+      - fact: "2025年度示例SKU过滤无效订单后实际采购量为10000桶。"
         evidence:
           - "示例历史采购数据.xlsx"
-      - fact: "结合2026年度采购规模同比增长8%的假设，预计采购量为10800桶。"
-        evidence:
-          - "采购员确认2026年度采购规模增长8%。"
 
   human_review:
+    order_filter_reviewed: false
     projection_reviewed: false
     quantity_updates_confirmed: false
     reviewer_notes: []
