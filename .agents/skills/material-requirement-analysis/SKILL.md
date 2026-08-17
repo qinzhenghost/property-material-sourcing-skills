@@ -1,8 +1,8 @@
 ---
 name: material-requirement-analysis
-description: 分析物业物资类采购初版需求清单，识别物料级与项目级遗漏、歧义、隐藏分拆维度及冲突，生成最少必要澄清问题，并在人工确认后输出标准需求结构化结果。V1仅覆盖物业物资类采购与邀标制流程。
+description: 分析物业物资类采购初版需求清单，识别物料级与项目级遗漏、歧义、隐藏分拆维度及冲突，生成最少必要澄清问题；P0 阻断项全部澄清后必须生成需求清单 Excel，并输出标准需求结构化结果与后续官方供方匹配 Handoff。V1仅覆盖物业物资类采购与邀标制流程。
 metadata:
-  version: "0.1.0"
+  version: "0.1.1"
   domain: "property-material-procurement"
   sourcing_method: "invitation-tender"
 ---
@@ -11,399 +11,382 @@ metadata:
 
 ## 1. Purpose
 
-把采购方提供的初版物资需求清单转化为可用于后续官方供方库寻源、意向征集、邀标和回标比价的标准需求。
+把采购方提供的初版物资需求转化为可用于后续官方供方库匹配和邀标的标准需求。
 
-本 Skill 的价值不是“替采购员补需求”，而是：
+核心流程：
+
+`初版需求 → 需求诊断 → P0/P1/P2 → 人工澄清 → P0清零 → 需求清单.xlsx → Structured Handoff`
+
+本 Skill 的核心不是替采购员补需求，而是：
 
 1. 读取并结构化现有事实；
-2. 识别缺失、歧义、矛盾和隐藏维度；
-3. 解释这些问题为什么会影响寻源、报价可比性或后续评标；
-4. 只提出阻碍下一阶段或显著影响报价可比性的澄清问题；
-5. 等待人工回答；
-6. 根据人工确认结果生成标准需求与结构化 handoff。
+2. 识别缺失、歧义、冲突和隐藏分拆维度；
+3. 只提出影响寻源或报价可比性的必要澄清；
+4. 等待人工确认 P0；
+5. **P0 全部解除后强制生成需求清单 Excel**；
+6. 形成标准需求和 `official-supplier-matching` Handoff。
 
-## 2. Parent / Scope
+## 2. Scope
 
 - Domain: 物业物资类采购
 - Procurement object: Goods / Materials only
 - Sourcing method: 邀标制
-- V1 excludes: 保洁、秩序、绿化、维修等服务类采购
-- Downstream target: `official-supplier-matching`
+- Downstream: `official-supplier-matching`
+- V1 excludes: 保洁、秩序、绿化、维修等服务采购
 
-## 3. Core Principle
+## 3. Information States
 
-> Do not source against an unclear requirement.
+所有信息必须区分：
 
-但“需求不完整”不等于必须无休止追问。
+- `FACT`：文件或用户明确确认的事实；
+- `ASSUMPTION`：临时假设，不能自动升级为事实；
+- `MISSING`：当前没有的信息；
+- `HUMAN_DECISION`：必须由采购员决定。
 
-必须把信息分成：
+## 4. Source Priority
 
-- **FACT**：文件或用户明确确认的事实；
-- **ASSUMPTION**：为了分析而暂时采用的假设，必须显式标记；
-- **MISSING**：当前没有的信息；
-- **HUMAN_DECISION**：必须由采购员确认的事项。
+1. 用户当前明确确认的澄清结果；
+2. 当前项目最终/澄清版需求清单；
+3. 当前项目初版需求清单；
+4. `historical-procurement-analysis` 的 confirmed / calculated handoff；
+5. 企业官方三级分类表；
+6. 历史类似项目，仅用于提示，不得覆盖当前项目事实。
 
-永远不得把 ASSUMPTION 自动升级成 FACT。
+供方报价字段为空不等于采购需求缺失。
 
-## 4. Authoritative Data Sources
+## 5. Document Role Detection
 
-按优先级使用：
-
-1. 当前用户明确确认的需求或澄清结果；
-2. 当前项目的最终确认版需求清单；
-3. 当前项目的初版需求清单；
-4. 企业官方《物资类供应商三级分类表》——仅用于品类分类与属性参考；
-5. 历史类似项目——仅用于提示遗漏，不得覆盖当前项目要求。
-
-### Source-of-Truth Rules
-
-- 企业官方三级分类是品类命名的优先来源。
-- 品牌、型号、规格、质量标准、数量、区域、账期、评标规则等不得由 AI 凭经验自动补成采购要求。
-- 历史项目只能作为“建议澄清”的证据，不是当前项目事实。
-- 供方报价字段为空，不得直接判定为采购需求遗漏。
-
-## 5. Required Inputs
-
-至少需要一种：
-
-- Excel / CSV 物料需求清单；
-- Word / Markdown / 文本形式需求；
-- 用户直接粘贴的物料列表。
-
-可选：
-
-- 企业官方物资三级分类表；
-- 同品类历史最终需求清单；
-- 当前项目背景说明。
-
-如果没有官方三级分类，允许进行“临时品类推断”，但必须标记为 `ASSUMPTION`，不得伪装成官方分类。
-
-## 6. Document Role Detection
-
-读取文件后先判断它属于：
+先判断输入属于：
 
 - `initial_requirement`
 - `clarified_requirement`
 - `standard_requirement`
 - `quotation_template`
 
-不得看到“含税单价/未税单价/税率/含税总价”等空白列就认为需求缺失。
+典型供方响应字段：
 
-### Supplier response fields examples
-
-以下字段通常属于供方响应区：
-
-- 报价单位
-- 联系人
-- 电话
-- 地址
-- 报价时间
 - 含税单价
 - 未税单价
 - 税率
 - 含税总价
+- 报价单位
+- 联系人
+- 电话
 - 供方备注
 
-如果上下文表明它们是供方待填写字段，将其写入 `supplier_response_fields`，不进入需求缺口计数。
+这些字段为空时不得作为需求缺口。
 
-## 7. Workflow
+## 6. Workflow
 
 ### Step 1 — Parse Project Context
 
 提取：
 
-- 项目名称/框架名称
+- 项目名称
 - 采购周期
 - 配送范围/交付地点
-- 报价口径（综合价、含税、含运等）
+- 报价口径
 - 预计量是否仅供参考
-- 下单渠道/采购平台要求
-- 付款与账期
+- 付款/账期
 - 合作期限
-- 评标/定标规则
-- 计划中选供方数量
-- 招标对接信息
+- 评标/定标价格口径
+- 拟中选供方数量
+- 其他当前项目约束
 
-没有就标记 MISSING，不自动补。
+缺失时标记，不自行补成事实。
 
 ### Step 2 — Parse Item Lines
 
 至少提取：
 
-- 行号
+- 原行号
+- 区域/项目（如有）
 - 物料名称
-- 品牌（如有）
-- 规格/型号（如有）
-- 计量单位
-- 起订量（如有）
-- 预计采购量
-- 区域数量拆分（如有）
-- 技术/质量属性（如有）
+- 品牌
+- 规格/型号/容量/包装
+- 单位
+- 起订量
+- 年度预计采购量
+- 技术/质量属性
 - 备注
 
-### Step 3 — Classify Material Category
+### Step 3 — Category Classification
 
-优先把每个 SKU 映射到企业官方：
+优先映射企业官方：
 
 `一级 → 二级 → 三级`
 
-若无法明确映射：
-
-- 不强制猜测；
-- 给出最多 1–3 个候选分类；
-- 标记需要人工确认。
+无法明确时只给候选并要求确认，不能伪装成官方分类。
 
 ### Step 4 — Universal Completeness Check
 
-对所有物资检查：
+检查：
 
-1. 物料名称是否能唯一识别采购对象；
-2. 计量单位是否明确；
-3. 预计数量是否明确；
-4. 规格/型号/尺寸/容量/材质/包装等是否足以形成可比报价；
-5. 是否存在品牌限定或等效替代规则；
-6. 是否需要质量标准、认证、样品、质保或验收条件；
-7. 交付区域是否明确；
-8. 若同 SKU 跨区域，是否需要数量按区域拆分；
-9. 供应商是否能仅凭当前信息准确报价。
+1. 名称能否唯一识别采购对象；
+2. 单位是否明确；
+3. 年度预计采购量是否明确；
+4. 品牌/规格/型号/容量/材质/包装是否足以形成可比报价；
+5. 品牌限定或等效替代规则是否明确；
+6. 必要的质量标准/认证/样品/验收是否明确；
+7. 配送区域是否明确；
+8. 跨区域 SKU 是否需要按区域拆量；
+9. 供应商能否仅凭当前信息准确报价。
 
-### Step 5 — Category-Specific Attribute Check
+### Step 5 — Hidden Dimension Detection
 
-根据品类动态检查关键属性。
+以下情况必须检查隐藏维度：
 
-示例：
+- 同一名称 + 同一单位重复出现；
+- 同名行数量差异明显但无解释；
+- 同名行可能对应不同城市、项目、品牌、规格、容量、包装、品质等级；
+- 历史采购 Handoff 显示同 SKU 存在多区域，但需求清单未标区域。
 
-- 粮油：品牌、净含量/容量、等级、加工/工艺要求、是否非转基因、包装单位；
-- 清洁用品：材质、尺寸、容量、浓度/成分、包装规格、适配设备；
-- 消防用品：品牌/型号、规格参数、认证要求、压力/容量、有效期、执行标准；
-- 工程耗材：材质、型号、尺寸、电气/机械参数、接口、适配对象、执行标准。
+候选隐藏维度包括：
 
-**禁止把示例字段机械套到所有品类。**
-
-### Step 6 — Hidden Dimension Detection
-
-这是 V1 的重点规则。
-
-当出现以下任一情况时，必须检查是否存在未表达的隐藏分拆维度：
-
-- 同一物料名称 + 同一单位重复出现；
-- 同名行存在不同参考价；
-- 同名行数量差异很大但没有区域/项目/规格说明；
-- 同名行在后续文件中出现不同城市或不同交付点；
-- 同一名称实际可能对应不同品牌、容量、型号、包装或等级。
-
-候选隐藏维度包括但不限于：
-
+- 区域/城市
+- 项目/交付点
 - 品牌
 - 规格/容量/型号
-- 城市/区域
-- 项目/交付点
 - 包装规格
 - 品质等级
 - 技术参数
 
-不得自行选择其中一个维度并改写需求；应提出澄清问题。
+AI 不得自行猜测并改写需求。
 
-### Step 7 — Project-Level Completeness Check
+### Step 6 — Project-Level Check
 
-在进入官方供方库匹配前，至少检查：
+至少检查：
 
-- 配送/交付范围
-- 报价口径
-- 税/运费口径
-- 采购数量口径（预计量是否绑定）
+- 配送范围
+- 报价口径/税运口径
+- 年度预计量口径
 - 付款/账期
-- 合作/合同周期
-- 评标依据
+- 合作周期
+- 评标价格口径
 - 拟中选供方数量
 
-以下信息若缺失且会改变供方适配性或报价可比性，应列为 blocker。
-
-### Step 8 — Contradiction & Formula Check
+### Step 7 — Contradiction Check
 
 检查：
 
-- 标题与正文区域是否冲突；
-- 单位与规格是否冲突；
-- 预计量与区域拆分之和是否一致；
-- 含税/未税口径是否混用；
-- 总价公式是否与说明一致；
-- 同一项目不同版本数量是否发生变化。
+- 标题与正文区域冲突；
+- 单位与规格冲突；
+- 总数量与区域拆分之和冲突；
+- 含税/未税口径冲突；
+- 不同版本数量/规格变化。
 
-版本发生变化时只报告差异，不擅自判断哪个数值“正确”。
+只报告差异，不自行判定哪个旧版本正确。
 
-### Step 9 — Prioritize Findings
-
-把发现分为：
+### Step 8 — Priority
 
 #### P0 — Blocking
 
-不澄清就无法合理寻源或报价不可比较。
+不澄清就无法合理寻源或报价不可比较，例如：
 
-例如：
-
-- 规格不足以唯一识别物料；
-- 交付区域未知且影响供货能力；
-- 同名重复行无法判断差异；
-- 评标价格口径未知。
+- 规格不足以识别物料；
+- 区域未知且影响供货能力；
+- 重复 SKU 无法判断差异；
+- 年度预计采购量缺失且没有可用的历史测算结果；
+- 评标价格口径缺失。
 
 #### P1 — Important
 
-会显著影响价格、供方能力或后续争议。
+会明显影响价格、履约能力或合同争议，但不阻断生成澄清版需求清单。
 
 #### P2 — Recommended
 
-有助于提高质量，但不阻碍进入下一步。
+优化项，不阻断下一阶段。
 
-### Step 10 — Generate Clarification Questions
+### Step 9 — Clarification Questions
 
-问题必须：
+按 P0 → P1 → P2 输出。每个问题必须说明：
 
-- 一次只问一个决策点；
-- 尽量给出结构化选项；
-- 说明“为什么需要确认”；
-- 说明“不确认会影响什么”；
-- 优先 P0，再 P1；
-- 不重复询问文件中已明确的信息。
+- 需要确认什么；
+- 为什么重要；
+- 不确认会影响什么。
 
-推荐格式：
-
-| 优先级 | 对象 | 缺口/歧义 | 澄清问题 | 为什么重要 | 影响 |
-|---|---|---|---|---|---|
-
-### Step 11 — Wait for Human Clarification
+### Step 10 — P0 Human Clarification Gate
 
 若存在 P0：
 
-- 不得把需求标记为 confirmed；
-- 不得建议开始官方供方库匹配；
+- `requirement_status` 不得为 confirmed；
+- 不进入 `official-supplier-matching`；
 - 等待采购员回答。
 
-如果用户明确要求“先继续”，可以带着 ASSUMPTION 输出临时版本，但 `requirement_status` 必须保持 `pending` 或 `partially_clarified`。
+采购员回答后重新检查 P0。
+
+**一旦 P0 = 0，必须立即进入 Excel 交付阶段。**
+
+P1/P2 尚未全部解决，不得成为“不生成 Excel”的理由。
+
+### Step 11 — Mandatory Requirement Workbook Output
+
+P0 全部解除后，固定生成需求清单 Excel。
+
+#### 11.1 原始输入为 Excel
+
+优先：
+
+1. 复制原需求清单为新文件；
+2. 保留原有版式、标题、公式和企业模板结构；
+3. 将采购员澄清确认内容写回对应行；
+4. 新增字段时尽量在原表结构内合理增加，不破坏原字段；
+5. 不修改原始文件本身。
+
+#### 11.2 无可复用 Excel 模板
+
+使用：
+
+`templates/标准需求清单模板.xlsx`
+
+#### 11.3 文件命名
+
+如果 P0 已清零，但仍有未解决 P1/P2：
+
+`{{项目名称}}-澄清版需求清单.xlsx`
+
+如果当前关键需求和项目商务条件均已人工确认：
+
+`{{项目名称}}-最终需求清单.xlsx`
+
+#### 11.4 Excel 必须包含
+
+至少包含：
+
+- 序号
+- 区域（涉及多区域时必须显式存在）
+- 名称
+- 品牌（如采购方有要求）
+- 规格
+- 单位
+- 起订量（如有）
+- 年度预计采购量
+- 备注
+
+项目级信息应保留：
+
+- 项目名称
+- 采购周期
+- 配送范围
+- 报价口径
+- 付款/账期
+- 合作期限
+- 预计量约束说明
+
+#### 11.5 供方报价字段
+
+如果原模板包含以下列，应保留但保持空白：
+
+- 含税单价
+- 未税单价
+- 税率
+- 含税总价
+
+不得把历史参考价格、AI测算价或旧报价写入这些供方待填列。
+
+#### 11.6 P1/P2 留痕
+
+仍未解决的 P1/P2：
+
+- 不得隐藏；
+- 在 Excel 备注或单独“待确认事项”区域留痕；
+- 不能改变已确认的采购事实。
+
+详细规则见：`references/requirement-workbook-output-rules.md`。
 
 ### Step 12 — Build Standard Requirement
 
-人工确认后：
+P0 清零后生成符合 `schemas/requirement.schema.yaml` 的标准对象，并记录 Excel 输出状态。
 
-- 生成符合 `schemas/requirement.schema.yaml` 的标准对象；
-- 保留原字段与新增字段的差异记录；
-- 不改变采购员确认的数量、规格、品牌或商务规则；
-- 将报价字段与需求字段分离。
+不得改变采购员确认的：
+
+- 数量
+- 区域
+- 品牌
+- 规格
+- 商务规则
 
 ### Step 13 — Structured Handoff
 
-只有人工确认且不存在 P0 blocker 时，才能输出：
+P0 清零后必须同时输出：
 
 ```yaml
 handoff:
-  workflow_stage: requirement_confirmed
+  workflow_stage: requirement_clarified
   procurement_domain: property_material
   sourcing_method: invitation_tender
-  requirement_status: confirmed
-  category_path:
-    level_1: 物资类
-    level_2: null
-    level_3: null
-  project_constraints:
-    delivery_regions: []
-    payment_terms: null
-    evaluation_rule: null
+  requirement_status: clarified_or_confirmed
+  p0_blocker_count: 0
+  requirement_workbook:
+    generated: true
+    filename: "{{项目名称}}-澄清版需求清单.xlsx"
+    source_mode: copied_from_input_or_standard_template
+  category_path: {}
+  project_constraints: {}
   item_count: 0
-  unresolved_items: []
+  unresolved_p1: []
+  unresolved_p2: []
   assumptions: []
   human_decision:
-    confirmed: true
+    p0_confirmed: true
   next_skill: official-supplier-matching
 ```
 
-## 8. Output Format
+如果 `requirement_workbook.generated != true`，则该 Skill 不得宣称本阶段交付完成。
 
-默认按以下顺序输出：
+## 7. Output Contract
 
-### A. 需求诊断摘要
+### P0 尚未清零
 
-- 清单行数
-- 可识别 SKU 数
-- P0/P1/P2 数量
-- 当前是否可以进入供方寻源
+输出：
 
-### B. 已确认事实
+1. 需求诊断摘要；
+2. 已确认事实；
+3. P0/P1/P2；
+4. 澄清问题；
+5. 暂不进入下游。
 
-只列 FACT。
+此时 Excel 可以不生成。
 
-### C. 需求缺口与歧义
+### P0 已清零
 
-使用表格。
+**必须同时交付：**
 
-### D. 澄清问题
+1. 需求诊断/澄清摘要；
+2. `{{项目名称}}-澄清版需求清单.xlsx` 或 `{{项目名称}}-最终需求清单.xlsx`；
+3. 标准 Requirement 结构化结果；
+4. Structured Handoff；
+5. 未解决 P1/P2（如有）。
 
-按 P0 → P1 → P2 排序。
+缺少第 2 项 Excel 即视为 Skill 执行未完成。
 
-### E. 澄清后的标准需求
+## 8. Golden Case Guardrails
 
-仅在用户回答后生成。
+1. “含税单价/含税总价为空”不能被判定为需求缺失；
+2. 同名同单位重复行必须触发隐藏维度检查；
+3. 历史采购显示重庆/贵州双区域时，重复 SKU 不得依赖行序猜区域；
+4. 人工澄清后的规格/区域必须进入 Excel；
+5. P0 清零后必须生成 Excel；
+6. P1/P2 不得阻断 Excel 生成；
+7. 供方报价字段必须保持空白；
+8. Excel 与 Structured Handoff 的 SKU 数量、区域、规格和数量必须一致。
 
-### F. Structured Handoff
+## 9. Human Review
 
-仅在满足进入下一 Skill 的条件时生成。
+采购员最终确认：
 
-## 9. Golden-Case Rules Learned from Current Samples
+- P0 澄清结果；
+- 区域/规格/品牌映射；
+- 年度预计采购量；
+- 项目级商务条件；
+- 最终需求清单。
 
-从“米面粮油物资框架”样本必须通过以下测试：
+## 10. Success Criteria
 
-1. 初版 18 行物料不能因为“含税单价/含税总价为空”被判定为需求缺失；它们是供方报价字段。
-2. 初版物料缺少品牌、规格，必须识别为关键缺口。
-3. “特香低芥酸菜籽油（非转基因）”同名同单位出现 4 次，必须触发隐藏维度检查。
-4. 其中不同 C 端参考价提示可能存在不同容量/规格，但 AI 不得直接断言规格。
-5. 最终版补充了品牌与规格，例如 5L/桶、4L/桶、1.8L/瓶、5KG/袋。
-6. 最终版新增综合报价、含税含运、120 天账期、重庆/贵州配送范围、1 年合作期、未税总价最低等项目级条件。
-7. 即使“最终版”中同 SKU 仍重复，后续价格对比表出现重庆/贵州城市拆分，因此必须提示检查行级区域拆分是否需要进入标准需求。
-8. 后续文件的数量发生变化时，只报告版本差异并要求确认，不自动覆盖当前需求数量。
-
-## 10. Human Review
-
-必须由采购员确认：
-
-- 品牌限制；
-- 规格/型号；
-- 数量及区域拆分；
-- 商务条件；
-- 评标规则；
-- 是否允许替代品；
-- 是否可以进入官方供方库寻源。
-
-## 11. Guardrails
-
-- 不凭空补需求。
-- 不把市场常见规格写成当前项目规格。
-- 不把历史项目字段当成当前项目事实。
-- 不把供方待填写字段当需求缺口。
-- 不在需求未确认时生成最终邀标供方名单。
-- 不执行公网供方搜索；供方来源由后续 `official-supplier-matching` 严格限制为内部官方库。
-- 不把“最终版”文件视为永远正确；仍需检查内部一致性与隐藏维度。
-
-## 12. Review Checklist
-
-完成前逐项检查：
-
-- [ ] 是否正确识别文档角色？
-- [ ] 是否分离采购需求字段和供方响应字段？
-- [ ] 是否提取项目级商务条件？
-- [ ] 是否逐 SKU 检查规格完整性？
-- [ ] 是否检查同名重复行的隐藏维度？
-- [ ] 是否检查区域数量拆分？
-- [ ] 是否区分 FACT / ASSUMPTION / MISSING / HUMAN_DECISION？
-- [ ] 是否只提出必要问题？
-- [ ] 是否避免把 AI 建议写成采购要求？
-- [ ] 存在 P0 时是否阻止进入下一 Skill？
-- [ ] 是否在人工确认后才标记 `requirement_status: confirmed`？
-
-## 13. Success Criteria
-
-本 Skill 成功的标准不是“输出一份看起来完整的清单”，而是：
-
-1. 采购员能快速看懂原始需求哪里不能直接寻源；
-2. 澄清问题少而关键；
-3. 澄清后不同供方能基于同一口径报价；
-4. 下游官方供方库匹配能获得明确的品类、区域和关键规格输入；
-5. 所有 AI 推断与采购员确认事实可追溯区分。
+1. P0 能被准确识别并通过最少问题澄清；
+2. P0 清零后必有 Excel 交付物；
+3. Excel 保留原模板风格或使用标准模板；
+4. P1/P2 未解决时能够留痕而非阻断；
+5. 供方报价字段不被预填；
+6. Excel、Requirement Schema、Handoff 三者一致；
+7. `official-supplier-matching` 可直接消费该需求清单和 Handoff。
