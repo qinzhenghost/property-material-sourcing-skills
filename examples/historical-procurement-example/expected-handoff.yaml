@@ -1,4 +1,4 @@
-schema_version: "0.5.4"
+schema_version: "0.5.5"
 procurement_domain: property_material
 
 source:
@@ -16,29 +16,19 @@ agreement_selection:
       valid_order_count: 72
       valid_record_count: 100
       date_from: "2025-01-01"
-      date_to: "2025-12-31"
+      date_to: "2025-06-30"
       sku_count: 12
-      valid_tax_included_amount: 500000
+      valid_tax_included_amount: 250000
       regions:
         - "重庆市"
-    - agreement_number: "HT-2025-002"
-      raw_order_count: 30
-      valid_order_count: 20
-      valid_record_count: 35
-      date_from: "2025-06-01"
-      date_to: "2025-12-31"
-      sku_count: 8
-      valid_tax_included_amount: 180000
-      regions:
-        - "贵州省"
   selected_agreement_numbers:
     - "HT-2025-001"
   selection_confirmed: true
   include_unlinked_agreement_records: false
-  unselected_order_count: 30
+  unselected_order_count: 0
   unlinked_agreement_record_count: 0
   notes:
-    - "采购员明确选择仅分析 HT-2025-001。"
+    - "采购员确认分析 HT-2025-001。"
 
 order_status_filter:
   filter_status: applied
@@ -57,19 +47,50 @@ order_status_filter:
     - status: "已退货"
       count: 8
   notes:
-    - "只对选中的 HT-2025-001 执行正式统计。"
+    - "仅保留有效订单。"
 
 analysis_scope:
   project_name: "示例物资续采项目"
   regions:
     - "重庆市"
-  baseline_period: "2025"
+  baseline_period: "2025H1"
   target_period: "2026"
-  period_completeness: full_year
+  period_completeness: partial_period
+
+annualization:
+  coverage_start: "2025-01-01"
+  coverage_end: "2025-06-30"
+  covered_days: 181
+  covered_months: 6
+  covered_month_equivalent: 5.95
+  annualization_required: true
+  annualization_method: full_calendar_months_to_12
+  annualization_factor: 2
+  seasonality_risk: medium
+  notes:
+    - "6个月有效采购量按12/6比例折算为12个月基线。"
+
+growth_rate_decision:
+  status: pending_user_confirmation
+  two_year_comparable_data_available: false
+  earlier_period: null
+  later_period: null
+  earlier_spend: null
+  later_spend: null
+  calculated_growth_rate: null
+  confirmed_growth_rate: null
+  growth_rate_source: unavailable
+  price_effect_warning: null
+  user_options:
+    - supplement_comparable_history
+    - provide_estimated_growth_rate
+    - use_zero_growth
+  notes:
+    - "当前只有一个部分年度，需用户补充数据或确认增量比例。"
 
 historical_records:
   - agreement_number: "HT-2025-001"
-    period: "2025"
+    period: "2025H1"
     item_key: "SKU-A|品牌A|5L|桶|重庆市"
     item_name: "示例物资A"
     brand: "品牌A"
@@ -77,44 +98,40 @@ historical_records:
     unit: "桶"
     region: "重庆市"
     supplier: null
-    actual_quantity: 10000
-    actual_amount: 500000
+    actual_quantity: 5000
+    actual_amount: 250000
     average_unit_price: 50
     tax_basis: tax_included
     anomaly_flag: false
     anomaly_reason: null
     evidence:
-      - "HT-2025-001 中已完成/执行中订单。"
-
-scale_analysis:
-  previous_period: "2025"
-  target_period: "2026"
-  previous_scale: 100
-  target_scale: 108
-  scale_unit: "项目数指数"
-  yoy_growth_rate: 0.08
-  growth_basis: user_confirmed_assumption
-  evidence:
-    - "采购员确认2026年度采购规模较2025年度增长8%。"
+      - "HT-2025-001中2025年1-6月已完成/执行中订单。"
 
 projection:
   method: quantity_driven
-  scale_growth_rate_used: 0.08
+  growth_rate_used: null
   price_growth_rate_used: 0
   item_projections:
     - item_key: "SKU-A|品牌A|5L|桶|重庆市"
       region: "重庆市"
-      baseline_quantity: 10000
-      projected_quantity: 10800
+      observed_quantity: 5000
+      observed_amount: 250000
+      covered_month_equivalent: 6
+      annualization_factor: 2
+      annualized_baseline_quantity: 10000
+      annualized_baseline_amount: 500000
+      growth_rate_applied: null
+      projected_quantity: 10000
       baseline_unit_price: 50
       projected_unit_price: 50
-      projected_amount: 540000
-      projection_method: last_full_year_adjusted_by_scale
+      projected_amount: 500000
+      quantity_status: provisional_annualized_baseline
+      projection_method: partial_period_annualized_pending_growth
       confidence: medium
       evidence:
-        - "所选协议2025年有效订单实际采购量10000桶。"
-        - "2026采购规模增长率8%。"
-  projected_total_amount: 540000
+        - "6个月有效采购量5000桶按12/6折算为10000桶。"
+        - "年度增量比例尚未确认。"
+  projected_total_amount: 500000
 
 requirement_handoff:
   selected_agreement_numbers:
@@ -122,19 +139,24 @@ requirement_handoff:
   quantity_updates:
     - item_key: "SKU-A|品牌A|5L|桶|重庆市"
       region: "重庆市"
-      baseline_quantity: 10000
-      baseline_period: "2025"
-      growth_rate_applied: 0.08
-      suggested_estimated_quantity: 10800
-      suggested_estimated_amount: 540000
+      observed_quantity: 5000
+      covered_month_equivalent: 6
+      annualization_factor: 2
+      annualized_baseline_quantity: 10000
+      growth_rate_source: unavailable
+      growth_rate_applied: null
+      suggested_estimated_quantity: 10000
+      suggested_estimated_amount: 500000
+      quantity_status: provisional_annualized_baseline
       confidence: medium
       evidence:
-        - "仅统计 HT-2025-001 中已完成/执行中订单。"
-      human_confirmation_status: pending
+        - "历史有效数据覆盖6个月，已折算为12个月基线。"
+      human_confirmation_status: pending_growth_confirmation
   requirement_workbook_output:
     template_path: ".agents/skills/historical-procurement-analysis/templates/需求清单模板.xlsx"
     output_filename: "示例物资续采项目-历史测算需求清单.xlsx"
-    output_status: generated
+    output_status: generated_with_provisional_annualized_quantity
+    annual_quantity_non_blank: true
     populated_fields:
       - "序号"
       - "区域"
@@ -143,39 +165,47 @@ requirement_handoff:
       - "规格"
       - "单位"
       - "年度预计采购量"
+      - "备注"
     supplier_response_fields_left_blank:
       - "含税单价"
       - "未税单价"
       - "税率"
       - "含税总价"
     notes:
-      - "历史参考单价仅用于内部金额测算，不写入供方报价列。"
+      - "年度预计采购量暂填10000桶12个月年化基线。"
+      - "备注需标明年度增量比例待确认。"
 
 strategy_report_handoff:
   selected_agreement_numbers:
     - "HT-2025-001"
   agreement_scope_summary:
-    - "本次仅分析协议 HT-2025-001，HT-2025-002 未纳入。"
+    - "本次分析协议HT-2025-001。"
   order_filter_summary:
-    - "选中协议中仅保留已完成/执行中订单。"
+    - "仅保留已完成/执行中订单。"
+  annualization_summary:
+    - "2025年1-6月有效量按12/6折算为12个月基线。"
+  growth_rate_summary:
+    - "缺少两年度可比数据，年度增量比例待用户确认。"
   spend_analysis:
-    - "2025年有效含税采购额500000元。"
+    - "6个月有效含税采购额250000元，年化基线500000元。"
   price_analysis:
     - "历史有效订单平均含税单价50元/桶。"
   demand_projection_basis:
-    - "2026采购规模同比预计增长8%。"
+    - "当前先采用12个月年化基线，增量待确认。"
   key_findings:
-    - "示例SKU预计采购量10800桶。"
+    - "示例SKU 12个月年化基线为10000桶。"
   risk_flags:
-    - "预测结果仍需采购员最终确认。"
+    - "比例年化可能受季节性和集中采购影响。"
   report_ready_facts:
-    - fact: "HT-2025-001 中2025年度示例SKU有效订单实际采购量为10000桶。"
+    - fact: "HT-2025-001中2025年1-6月示例SKU有效采购量为5000桶。"
       evidence:
         - "示例历史采购数据.xlsx"
 
 human_review:
   agreement_selection_confirmed: true
   order_filter_reviewed: false
+  annualization_reviewed: false
+  growth_rate_confirmed: false
   projection_reviewed: false
   quantity_updates_confirmed: false
   reviewer_notes: []
