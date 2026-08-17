@@ -1,5 +1,20 @@
 # CHANGELOG
 
+## v0.7.8
+
+`sourcing-invitation` 升级为 `0.3.3`：
+
+- 企业《招标意向征集登记表模板.xlsx》`Sheet1!N3` 中原固定“预计6000元投标保证金”改为 `{{投标保证金金额}}` 变量；
+- 投标保证金计算口径固定为 `采购清单预估总金额 × 1%`；
+- 计算结果使用 `CEILING(..., 1000)` 向上取整到 1000 元整数倍；
+- 采购清单预估总金额必须来自当前项目可追溯的 confirmed requirement、historical/material requirement handoff 或采购员明确确认；
+- 禁止从供应商待填写报价列反推预估总金额；
+- 禁止沿用历史模板的 6000 元或其他默认保证金；
+- 缺少采购清单预估总金额时，03 登记表不得标记为 ready，必须提示人工补充/确认；
+- 新增 `references/bid-bond-variable-rules.md`；
+- `sourcing-invitation-package.schema.yaml` 升级至 `0.3.3`，新增 `bid_bond`、N3 变量替换与一致性检查字段；
+- `.agents/skills/` 与兼容 `skills/` 的登记表模板同步更新为 N3 变量版。
+
 ## v0.7.7
 
 `sourcing-invitation` 升级为 `0.3.2`：
