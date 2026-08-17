@@ -2,14 +2,15 @@ $schema: "https://json-schema.org/draft/2020-12/schema"
 $id: "https://example.local/schemas/historical-procurement.schema.yaml"
 title: "物业物资历史采购分析"
 description: >-
-  对历史订单先执行订单状态过滤，仅保留已完成和执行中订单，随后分析历史采购数量、金额、单价、区域和采购规模变化，
-  形成可追溯的需求数量/金额基线，并输出结构化 Handoff 和标准需求清单草稿。
+  历史订单分析前必须先由用户明确选择一个或多个协议编号，再仅保留已完成和执行中订单，
+  形成可追溯的采购数量/金额基线、需求清单输出及采购策略 Handoff。
 type: object
 additionalProperties: false
 required:
   - schema_version
   - procurement_domain
   - source
+  - agreement_selection
   - order_status_filter
   - analysis_scope
   - historical_records
@@ -19,10 +20,11 @@ required:
 properties:
   schema_version:
     type: string
-    const: "0.5.3"
+    const: "0.5.4"
   procurement_domain:
     type: string
-    const: "property_material"
+    const: property_material
+
   source:
     type: object
     additionalProperties: false
@@ -32,16 +34,64 @@ properties:
         type: array
         minItems: 1
         items: {type: string}
-      data_owner: {type: [string, "null"]}
-      data_period:
-        type: array
-        items: {type: string}
       source_quality:
         type: string
         enum: [high, medium, low, unknown]
       notes:
         type: array
         items: {type: string}
+
+  agreement_selection:
+    type: object
+    additionalProperties: false
+    required:
+      - agreement_field
+      - available_agreements
+      - selected_agreement_numbers
+      - selection_confirmed
+    properties:
+      agreement_field:
+        type: string
+      available_agreements:
+        type: array
+        minItems: 1
+        items:
+          type: object
+          additionalProperties: false
+          required: [agreement_number]
+          properties:
+            agreement_number: {type: string}
+            raw_order_count: {type: [integer, "null"], minimum: 0}
+            valid_order_count: {type: [integer, "null"], minimum: 0}
+            valid_record_count: {type: [integer, "null"], minimum: 0}
+            date_from: {type: [string, "null"]}
+            date_to: {type: [string, "null"]}
+            sku_count: {type: [integer, "null"], minimum: 0}
+            valid_tax_included_amount: {type: [number, "null"], minimum: 0}
+            regions:
+              type: array
+              items: {type: string}
+      selected_agreement_numbers:
+        type: array
+        minItems: 1
+        uniqueItems: true
+        items: {type: string}
+      selection_confirmed:
+        type: boolean
+        const: true
+      include_unlinked_agreement_records:
+        type: boolean
+        default: false
+      unselected_order_count:
+        type: [integer, "null"]
+        minimum: 0
+      unlinked_agreement_record_count:
+        type: [integer, "null"]
+        minimum: 0
+      notes:
+        type: array
+        items: {type: string}
+
   order_status_filter:
     type: object
     additionalProperties: false
@@ -75,35 +125,58 @@ properties:
       notes:
         type: array
         items: {type: string}
+
   analysis_scope:
     type: object
     additionalProperties: false
     properties:
       project_name: {type: [string, "null"]}
-      category_path:
-        type: object
-        additionalProperties: false
-        properties:
-          level_1: {type: [string, "null"]}
-          level_2: {type: [string, "null"]}
-          level_3: {type: [string, "null"]}
       regions:
         type: array
         items: {type: string}
       baseline_period: {type: [string, "null"]}
       target_period: {type: [string, "null"]}
+      period_completeness:
+        type: string
+        enum: [full_year, comparable_period, partial_period, unknown]
+
   historical_records:
     type: array
     minItems: 1
-    items: {$ref: "#/$defs/historical_record"}
+    items:
+      type: object
+      additionalProperties: false
+      required: [agreement_number, period, item_key, item_name, unit]
+      properties:
+        agreement_number: {type: string}
+        period: {type: string}
+        item_key: {type: string}
+        item_name: {type: string}
+        brand: {type: [string, "null"]}
+        specification: {type: [string, "null"]}
+        unit: {type: string}
+        region: {type: [string, "null"]}
+        supplier: {type: [string, "null"]}
+        actual_quantity: {type: [number, "null"], minimum: 0}
+        actual_amount: {type: [number, "null"], minimum: 0}
+        average_unit_price: {type: [number, "null"], minimum: 0}
+        tax_basis:
+          type: [string, "null"]
+          enum: [tax_included, pre_tax, mixed, unknown, null]
+        anomaly_flag: {type: boolean}
+        anomaly_reason: {type: [string, "null"]}
+        evidence:
+          type: array
+          items: {type: string}
+
   scale_analysis:
     type: object
     additionalProperties: false
     properties:
       previous_period: {type: [string, "null"]}
-      current_or_target_period: {type: [string, "null"]}
+      target_period: {type: [string, "null"]}
       previous_scale: {type: [number, "null"]}
-      current_or_target_scale: {type: [number, "null"]}
+      target_scale: {type: [number, "null"]}
       scale_unit: {type: [string, "null"]}
       yoy_growth_rate: {type: [number, "null"]}
       growth_basis:
@@ -112,6 +185,7 @@ properties:
       evidence:
         type: array
         items: {type: string}
+
   projection:
     type: object
     additionalProperties: false
@@ -120,50 +194,65 @@ properties:
       method:
         type: string
         enum: [quantity_driven, amount_only, no_projection]
-      scale_growth_applied: {type: boolean}
       scale_growth_rate_used: {type: [number, "null"]}
       price_growth_rate_used: {type: [number, "null"]}
-      price_growth_basis:
-        type: string
-        enum: [historical_average, latest_actual, user_confirmed, external_benchmark, none]
       item_projections:
         type: array
-        items: {$ref: "#/$defs/item_projection"}
+        items:
+          type: object
+          additionalProperties: false
+          required: [item_key, projection_method, confidence]
+          properties:
+            item_key: {type: string}
+            region: {type: [string, "null"]}
+            baseline_quantity: {type: [number, "null"], minimum: 0}
+            projected_quantity: {type: [number, "null"], minimum: 0}
+            baseline_unit_price: {type: [number, "null"], minimum: 0}
+            projected_unit_price: {type: [number, "null"], minimum: 0}
+            projected_amount: {type: [number, "null"], minimum: 0}
+            projection_method:
+              type: string
+              enum:
+                - last_full_year_actual
+                - multi_year_average
+                - last_full_year_adjusted_by_scale
+                - amount_only_adjusted_by_scale
+                - user_confirmed_override
+                - no_reliable_projection
+            confidence:
+              type: string
+              enum: [high, medium, low]
+            evidence:
+              type: array
+              items: {type: string}
       projected_total_amount: {type: [number, "null"]}
-      currency: {type: string, default: "CNY"}
-      confidence:
-        type: string
-        enum: [high, medium, low]
-      confidence_reasons:
-        type: array
-        items: {type: string}
-      warnings:
-        type: array
-        items: {type: string}
+
   requirement_handoff:
     type: object
     additionalProperties: false
-    required: [quantity_updates, requirement_workbook_output]
+    required:
+      - selected_agreement_numbers
+      - quantity_updates
+      - requirement_workbook_output
     properties:
+      selected_agreement_numbers:
+        type: array
+        minItems: 1
+        items: {type: string}
       quantity_updates:
         type: array
         items:
           type: object
           additionalProperties: false
-          required: [item_key, quantity_source, suggested_estimated_quantity, evidence]
+          required: [item_key, evidence, human_confirmation_status]
           properties:
             item_key: {type: string}
             region: {type: [string, "null"]}
-            quantity_source:
-              type: string
-              enum: [historical_actual, historical_projected, manual_adjustment]
             baseline_quantity: {type: [number, "null"]}
             baseline_period: {type: [string, "null"]}
             growth_rate_applied: {type: [number, "null"]}
-            suggested_estimated_quantity: {type: number, minimum: 0}
-            unit: {type: [string, "null"]}
-            suggested_estimated_amount: {type: [number, "null"]}
-            amount_basis: {type: [string, "null"]}
+            suggested_estimated_quantity: {type: [number, "null"], minimum: 0}
+            suggested_estimated_amount: {type: [number, "null"], minimum: 0}
             confidence:
               type: string
               enum: [high, medium, low]
@@ -174,16 +263,6 @@ properties:
             human_confirmation_status:
               type: string
               enum: [pending, confirmed, adjusted]
-      project_level_updates:
-        type: object
-        additionalProperties: false
-        properties:
-          projected_total_amount: {type: [number, "null"]}
-          projection_basis: {type: [string, "null"]}
-          growth_rate: {type: [number, "null"]}
-          notes:
-            type: array
-            items: {type: string}
       requirement_workbook_output:
         type: object
         additionalProperties: false
@@ -191,7 +270,6 @@ properties:
           - template_path
           - output_filename
           - output_status
-          - populated_fields
           - supplier_response_fields_left_blank
         properties:
           template_path: {type: string}
@@ -207,24 +285,23 @@ properties:
           notes:
             type: array
             items: {type: string}
+
   strategy_report_handoff:
     type: object
     additionalProperties: false
     properties:
+      selected_agreement_numbers:
+        type: array
+        items: {type: string}
+      agreement_scope_summary:
+        type: array
+        items: {type: string}
       order_filter_summary:
         type: array
         items: {type: string}
       spend_analysis:
         type: array
-        items:
-          type: object
-          additionalProperties: false
-          properties:
-            period: {type: string}
-            total_quantity: {type: [number, "null"]}
-            total_amount: {type: [number, "null"]}
-            yoy_quantity_change: {type: [number, "null"]}
-            yoy_amount_change: {type: [number, "null"]}
+        items: {type: string}
       price_analysis:
         type: array
         items: {type: string}
@@ -232,9 +309,6 @@ properties:
         type: array
         items: {type: string}
       key_findings:
-        type: array
-        items: {type: string}
-      concentration_findings:
         type: array
         items: {type: string}
       risk_flags:
@@ -252,67 +326,15 @@ properties:
               type: array
               minItems: 1
               items: {type: string}
+
   human_review:
     type: object
     additionalProperties: false
     properties:
+      agreement_selection_confirmed: {type: boolean}
       order_filter_reviewed: {type: boolean}
       projection_reviewed: {type: boolean}
       quantity_updates_confirmed: {type: boolean}
       reviewer_notes:
-        type: array
-        items: {type: string}
-$defs:
-  historical_record:
-    type: object
-    additionalProperties: false
-    required: [period, item_key, item_name, unit]
-    properties:
-      period: {type: string}
-      item_key: {type: string}
-      item_name: {type: string}
-      brand: {type: [string, "null"]}
-      specification: {type: [string, "null"]}
-      unit: {type: string}
-      region: {type: [string, "null"]}
-      project: {type: [string, "null"]}
-      supplier: {type: [string, "null"]}
-      source_order_status:
-        type: [string, "null"]
-        enum: ["已完成", "执行中", null]
-      actual_quantity: {type: [number, "null"], minimum: 0}
-      actual_amount: {type: [number, "null"], minimum: 0}
-      average_unit_price: {type: [number, "null"], minimum: 0}
-      tax_basis:
-        type: [string, "null"]
-        enum: [tax_included, pre_tax, mixed, unknown, null]
-      source_row_reference: {type: [string, "null"]}
-      anomaly_flag: {type: boolean, default: false}
-      anomaly_reason: {type: [string, "null"]}
-  item_projection:
-    type: object
-    additionalProperties: false
-    required: [item_key, baseline_period, unit, projection_method]
-    properties:
-      item_key: {type: string}
-      region: {type: [string, "null"]}
-      baseline_period: {type: string}
-      baseline_quantity: {type: [number, "null"], minimum: 0}
-      unit: {type: string}
-      scale_growth_rate: {type: [number, "null"]}
-      manual_quantity_adjustment_rate: {type: [number, "null"]}
-      projected_quantity: {type: [number, "null"], minimum: 0}
-      baseline_unit_price: {type: [number, "null"], minimum: 0}
-      price_growth_rate: {type: [number, "null"]}
-      projected_unit_price: {type: [number, "null"], minimum: 0}
-      baseline_amount: {type: [number, "null"], minimum: 0}
-      projected_amount: {type: [number, "null"], minimum: 0}
-      projection_method:
-        type: string
-        enum: [last_full_year_actual, multi_year_average, last_full_year_adjusted_by_scale, amount_only_adjusted_by_scale, user_confirmed_override, no_reliable_projection]
-      evidence:
-        type: array
-        items: {type: string}
-      notes:
         type: array
         items: {type: string}
