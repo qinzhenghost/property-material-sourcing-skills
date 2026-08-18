@@ -21,10 +21,11 @@ required:
   - evaluation_team
   - consistency_checks
   - content_depth_checks
+  - report_content_metrics
 properties:
   schema_version:
     type: string
-    const: "0.7.3"
+    const: "0.7.4"
 
   report_status:
     type: string
@@ -58,11 +59,17 @@ properties:
       delivery_regions:
         type: array
         items: {type: string}
+      delivery_requirements:
+        type: array
+        items: {type: string}
       original_contract_expiry: {type: [string, "null"]}
       historical_findings:
         type: array
         items: {type: string}
       demand_growth_basis: {type: [string, "null"]}
+      procurement_objective:
+        type: array
+        items: {type: string}
 
   scope_and_lots:
     type: object
@@ -74,6 +81,9 @@ properties:
       lot_description:
         type: array
         items: {type: string}
+      scope_findings:
+        type: array
+        items: {type: string}
       quantity_source: {$ref: "#/$defs/evidence_value"}
 
   spend_analysis:
@@ -83,6 +93,8 @@ properties:
       - completeness_status
       - analysis_basis
       - dimension_coverage
+      - overall_findings
+      - free_shipping_analysis
       - key_findings
       - sourcing_implications
       - data_limitations
@@ -92,17 +104,20 @@ properties:
         enum: [complete, partial, insufficient_data]
       analysis_basis:
         type: array
+        minItems: 1
         items: {type: string}
       historical_period: {type: [string, "null"]}
       historical_tax_included_spend: {type: [number, "null"], minimum: 0}
       historical_pre_tax_spend: {type: [number, "null"], minimum: 0}
       projected_spend: {type: [number, "null"], minimum: 0}
       order_count: {type: [integer, "null"], minimum: 0}
+      valid_line_count: {type: [integer, "null"], minimum: 0}
       average_order_value: {type: [number, "null"], minimum: 0}
       average_period_spend: {type: [number, "null"], minimum: 0}
       yoy_change_rate: {type: [number, "null"]}
       overall_findings:
         type: array
+        minItems: 1
         items: {type: string}
       dimension_coverage:
         type: object
@@ -165,6 +180,7 @@ properties:
             items: {type: string}
           analysis:
             type: array
+            minItems: 1
             items: {type: string}
           suggested_options:
             type: array
@@ -175,13 +191,23 @@ properties:
           confirmed_rule: {type: [string, "null"]}
       key_findings:
         type: array
+        minItems: 1
         items: {type: string}
       sourcing_implications:
         type: array
+        minItems: 1
         items: {type: string}
       data_limitations:
         type: array
         items: {type: string}
+    allOf:
+      - if:
+          properties:
+            completeness_status: {const: complete}
+        then:
+          properties:
+            key_findings: {minItems: 3}
+            sourcing_implications: {minItems: 3}
 
   market_analysis:
     type: object
@@ -192,8 +218,10 @@ properties:
       - supply_landscape
       - market_characteristics
       - cost_drivers
+      - cost_structure
       - local_fulfillment_factors
       - price_trends
+      - market_risks
       - sourcing_implications
       - sources
     properties:
@@ -238,6 +266,19 @@ properties:
       sources:
         type: array
         items: {$ref: "#/$defs/public_source"}
+    allOf:
+      - if:
+          properties:
+            completeness_status: {const: complete}
+        then:
+          properties:
+            internal_supply_signals: {minItems: 3}
+            cost_drivers: {minItems: 4}
+            cost_structure: {minItems: 4}
+            local_fulfillment_factors: {minItems: 2}
+            price_trends: {minItems: 1}
+            market_risks: {minItems: 1}
+            sourcing_implications: {minItems: 3}
 
   shortlist:
     type: object
@@ -248,6 +289,9 @@ properties:
       contacted_suppliers: {type: [integer, "null"], minimum: 0}
       replied_suppliers: {type: [integer, "null"], minimum: 0}
       shortlisted_count: {type: [integer, "null"], minimum: 0}
+      funnel_summary:
+        type: array
+        items: {type: string}
       shortlisted_suppliers:
         type: array
         items:
@@ -258,6 +302,7 @@ properties:
             supplier_name: {type: string}
             reasons:
               type: array
+              minItems: 1
               items: {type: string}
             attention_items:
               type: array
@@ -276,6 +321,7 @@ properties:
       bid_bond: {type: [string, "null"]}
       performance_bond: {type: [string, "null"]}
       minimum_delivery_or_free_shipping_rule: {type: [string, "null"]}
+      price_management_rule: {type: [string, "null"]}
 
   supplier_selection:
     type: object
@@ -386,17 +432,30 @@ properties:
     additionalProperties: false
     required:
       - spend_has_numeric_structure
+      - spend_available_dimensions_analyzed
       - spend_has_procurement_implications
+      - spend_template_overall_filled
+      - spend_template_business_unit_handled
+      - spend_template_sku_filled
+      - spend_template_free_shipping_handled
       - market_has_internal_supply_signals
       - market_has_cost_drivers
       - market_has_price_or_risk_view
       - market_has_local_fulfillment_view
       - market_has_procurement_implications
+      - market_template_market_situation_filled
+      - market_template_cost_structure_filled
+      - unsourced_cost_percentages_absent
+      - docx_expanded_instead_of_truncated
       - template_placeholders_removed
     properties:
       spend_has_numeric_structure: {type: boolean}
       spend_available_dimensions_analyzed: {type: boolean}
       spend_has_procurement_implications: {type: boolean}
+      spend_template_overall_filled: {type: boolean}
+      spend_template_business_unit_handled: {type: boolean}
+      spend_template_sku_filled: {type: boolean}
+      spend_template_free_shipping_handled: {type: boolean}
       free_shipping_supported_by_order_or_fulfillment_evidence: {type: boolean}
       market_has_internal_supply_signals: {type: boolean}
       market_public_research_performed_when_web_available: {type: boolean}
@@ -404,11 +463,44 @@ properties:
       market_has_price_or_risk_view: {type: boolean}
       market_has_local_fulfillment_view: {type: boolean}
       market_has_procurement_implications: {type: boolean}
+      market_template_market_situation_filled: {type: boolean}
+      market_template_cost_structure_filled: {type: boolean}
       unsourced_cost_percentages_absent: {type: boolean}
+      docx_expanded_instead_of_truncated: {type: boolean}
       template_placeholders_removed: {type: boolean}
       notes:
         type: array
         items: {type: string}
+
+  report_content_metrics:
+    type: object
+    additionalProperties: false
+    required:
+      - historical_spend_data_available
+      - spend_numeric_fact_count
+      - spend_numeric_table_count
+      - spend_key_finding_count
+      - spend_action_count
+      - market_internal_signal_count
+      - market_cost_component_count
+      - market_price_or_risk_finding_count
+      - market_local_fulfillment_finding_count
+      - market_action_count
+      - web_research_available
+      - public_source_count
+    properties:
+      historical_spend_data_available: {type: boolean}
+      spend_numeric_fact_count: {type: integer, minimum: 0}
+      spend_numeric_table_count: {type: integer, minimum: 0}
+      spend_key_finding_count: {type: integer, minimum: 0}
+      spend_action_count: {type: integer, minimum: 0}
+      market_internal_signal_count: {type: integer, minimum: 0}
+      market_cost_component_count: {type: integer, minimum: 0}
+      market_price_or_risk_finding_count: {type: integer, minimum: 0}
+      market_local_fulfillment_finding_count: {type: integer, minimum: 0}
+      market_action_count: {type: integer, minimum: 0}
+      web_research_available: {type: boolean}
+      public_source_count: {type: integer, minimum: 0}
 
   missing_items:
     type: array
@@ -417,6 +509,71 @@ properties:
   human_decisions_required:
     type: array
     items: {type: string}
+
+allOf:
+  - if:
+      properties:
+        report_status: {const: ready_for_approval}
+    then:
+      properties:
+        content_depth_checks:
+          properties:
+            spend_has_numeric_structure: {const: true}
+            spend_available_dimensions_analyzed: {const: true}
+            spend_has_procurement_implications: {const: true}
+            spend_template_overall_filled: {const: true}
+            spend_template_business_unit_handled: {const: true}
+            spend_template_sku_filled: {const: true}
+            spend_template_free_shipping_handled: {const: true}
+            market_has_internal_supply_signals: {const: true}
+            market_has_cost_drivers: {const: true}
+            market_has_price_or_risk_view: {const: true}
+            market_has_local_fulfillment_view: {const: true}
+            market_has_procurement_implications: {const: true}
+            market_template_market_situation_filled: {const: true}
+            market_template_cost_structure_filled: {const: true}
+            unsourced_cost_percentages_absent: {const: true}
+            docx_expanded_instead_of_truncated: {const: true}
+            template_placeholders_removed: {const: true}
+        report_content_metrics:
+          properties:
+            spend_numeric_fact_count: {minimum: 4}
+            spend_key_finding_count: {minimum: 3}
+            spend_action_count: {minimum: 3}
+            market_internal_signal_count: {minimum: 3}
+            market_cost_component_count: {minimum: 4}
+            market_price_or_risk_finding_count: {minimum: 2}
+            market_local_fulfillment_finding_count: {minimum: 2}
+            market_action_count: {minimum: 3}
+  - if:
+      properties:
+        report_status: {const: ready_for_approval}
+        report_content_metrics:
+          properties:
+            historical_spend_data_available: {const: true}
+          required: [historical_spend_data_available]
+      required: [report_status, report_content_metrics]
+    then:
+      properties:
+        report_content_metrics:
+          properties:
+            spend_numeric_table_count: {minimum: 2}
+  - if:
+      properties:
+        report_status: {const: ready_for_approval}
+        report_content_metrics:
+          properties:
+            web_research_available: {const: true}
+          required: [web_research_available]
+      required: [report_status, report_content_metrics]
+    then:
+      properties:
+        report_content_metrics:
+          properties:
+            public_source_count: {minimum: 3}
+        content_depth_checks:
+          properties:
+            market_public_research_performed_when_web_available: {const: true}
 
 $defs:
   evidence_value:
@@ -435,7 +592,7 @@ $defs:
   public_source:
     type: object
     additionalProperties: false
-    required: [source, source_date, evidence_summary]
+    required: [source, source_date, evidence_summary, confidence]
     properties:
       source: {type: string}
       source_date: {type: string}
@@ -472,26 +629,26 @@ $defs:
     required: [bucket_label, order_count, order_share]
     properties:
       bucket_label: {type: string}
-      lower_bound: {type: [number, "null"], minimum: 0}
-      upper_bound: {type: [number, "null"], minimum: 0}
       order_count: {type: integer, minimum: 0}
       order_share: {type: number, minimum: 0, maximum: 1}
       spend_amount: {type: [number, "null"], minimum: 0}
       spend_share: {type: [number, "null"], minimum: 0, maximum: 1}
+      note: {type: [string, "null"]}
 
   sku_spend_item:
     type: object
     additionalProperties: false
     required: [sku_name]
     properties:
+      list_no: {type: [string, integer, "null"]}
       sku_name: {type: string}
-      specification: {type: [string, "null"]}
       brand: {type: [string, "null"]}
+      specification: {type: [string, "null"]}
       unit: {type: [string, "null"]}
       quantity: {type: [number, "null"], minimum: 0}
+      average_unit_price: {type: [number, "null"], minimum: 0}
       spend_amount: {type: [number, "null"], minimum: 0}
       spend_share: {type: [number, "null"], minimum: 0, maximum: 1}
-      average_unit_price: {type: [number, "null"], minimum: 0}
       tax_basis:
         type: [string, "null"]
         enum: [tax_included, pre_tax, mixed, unknown, null]
@@ -500,16 +657,10 @@ $defs:
   cost_component:
     type: object
     additionalProperties: false
-    required: [component, impact_level, evidence_basis]
+    required: [component, impact]
     properties:
       component: {type: string}
-      impact_level:
-        type: string
-        enum: [major, medium, minor, unknown]
-      share_min: {type: [number, "null"], minimum: 0, maximum: 1}
-      share_max: {type: [number, "null"], minimum: 0, maximum: 1}
-      evidence_basis: {type: string}
-      source: {type: [string, "null"]}
-      confidence:
-        type: string
-        enum: [high, medium, low, unknown]
+      impact: {type: string}
+      percentage_or_range: {type: [string, "null"]}
+      percentage_supported: {type: boolean}
+      evidence: {type: [string, "null"]}
