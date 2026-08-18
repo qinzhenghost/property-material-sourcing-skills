@@ -1,4 +1,4 @@
-# Property Material Sourcing Skills — v0.9.0
+# Property Material Sourcing Skills — v0.9.1
 
 物业物资类 AI 邀标寻源 Skill 库。
 
@@ -61,6 +61,9 @@ supplier-shortlist
              └─ shortlist-handoff.yaml
         ↓
 sourcing-strategy
+        ├─ 深度支出分析
+        ├─ 当地供应市场行情研究
+        ├─ 短名单/定标/风险逻辑整合
         └─ 采购方案报告.docx
 ```
 
@@ -72,7 +75,7 @@ sourcing-strategy
 | `material-requirement-analysis` | 需求诊断、P0澄清、强制生成澄清/最终需求清单 Excel | ✅ |
 | `sourcing-invitation` | 官方供方匹配 + 人工确认 + 邀标四件套 | ✅ |
 | `supplier-shortlist` | 供方回复 → 短名单建议 → 人工确认 → 短名单报批 + strategy_handoff | ✅ |
-| `sourcing-strategy` | 生成采购方案/策略报告 | ✅ |
+| `sourcing-strategy` | 深度支出/市场分析 + 采购方案/策略报告 | ✅ |
 
 ## historical-procurement-analysis v0.5.5
 
@@ -98,7 +101,7 @@ next_skill: sourcing-invitation
 next_phase: official_supplier_matching
 ```
 
-## sourcing-invitation v0.4.0
+## sourcing-invitation v0.4.x
 
 ### Phase A — 官方供方匹配
 
@@ -115,7 +118,7 @@ next_phase: official_supplier_matching
 04 {{项目名称}}-供方信息长名单.xlsx
 ```
 
-- 01：单一 EML，供方邮箱仅放 BCC，不自动发送；
+- 01：单一 EML，供方邮箱仅放 BCC，不自动发送；正文不得残留 Markdown 标记；
 - 02、03：实际对外附件；
 - 03：必须复制企业原版模板；`N3` 保证金 = `CEILING(采购清单预估总金额 × 1%, 1000)`；
 - 04：采购内部文件，只列人工确认初版供方及其已确认联系人/电话/邮箱，不外发。
@@ -153,7 +156,7 @@ next_phase: official_supplier_matching
 
 Phase B 不允许重新评分、重新排序或改变采购员确认结果。
 
-## sourcing-strategy v0.7.1
+## sourcing-strategy v0.7.2
 
 直接消费：
 
@@ -161,7 +164,8 @@ Phase B 不允许重新评分、重新排序或改变采购员确认结果。
 - `sourcing-invitation` 的官方库覆盖 / 保证金等可追溯结果；
 - `supplier-shortlist.strategy_handoff` 的人工确认最终短名单；
 - 历史采购分析（如有）；
-- 当前项目采购规则。
+- 当前项目采购规则；
+- 有明确来源的公开市场资料。
 
 生成：
 
@@ -169,6 +173,45 @@ Phase B 不允许重新评分、重新排序或改变采购员确认结果。
 {{项目名称}}-strategy-data.yaml
 {{项目名称}}-采购方案报告.docx
 ```
+
+### 支出分析最低深度
+
+有历史数据时必须尽可能形成：
+
+- 整体历史实际支出 + 年化/预测支出；
+- 区域/项目/业态 Top 维度及占比；
+- Top 5 高支出 SKU、数量、均价、金额、占比；
+- 历史供应商集中度（有供方字段时）；
+- 可比 SKU 价格分析；
+- 至少3条带数字的关键发现；
+- 至少2条采购策略含义。
+
+无完整历史数据也不能只写“暂无数据”，必须降级做计划支出/数量结构分析并明确缺口。
+
+### 当地供应市场行情最低深度
+
+必须组合：
+
+1. 内部供应市场信号：官方库供方数量、区域覆盖、邀约、回复、短名单、商务条件接受度；
+2. 外部公开市场：供应格局、上游/成本、物流履约、价格趋势、政策/标准；
+3. 采购策略影响：至少3条与本项目直接相关的动作。
+
+Web 可用且地区/品类明确时，应主动研究公开市场，原则上至少3个独立来源并优先近12个月资料。
+
+### 内容质量 Gate
+
+- 不得只填模板标题；
+- 不得残留 `X / XX / XXX / X%`；
+- 表格后必须有结论；
+- 短名单先说明官方库→邀约→回复→入围漏斗，再逐家写可追溯理由；
+- 定标、目标价、备选机制和商务条款必须逻辑一致；
+- 风险优先按“触发场景→影响→处置”写；
+- `strategy-data.yaml` 必须标记 spend/market completeness status；
+- 分析深度不足不得标记 `ready_for_approval`。
+
+详细规则见：
+
+`references/report-content-quality-guide.md`
 
 ## 核心原则
 
@@ -186,7 +229,19 @@ Phase B 不允许重新评分、重新排序或改变采购员确认结果。
 12. N3 投标保证金按当前项目预估总金额动态计算。
 13. Phase B 报批不得重新改变采购员确认的最终短名单。
 14. sourcing-strategy 必须消费人工确认的 shortlist_handoff，而不是 Phase A AI建议。
-15. 所有重要结论、统计和计算必须可追溯。
+15. sourcing-strategy 的核心分析章节必须形成“事实 → 分析 → 判断 → 采购动作”。
+16. 所有重要结论、统计和计算必须可追溯。
+
+## v0.9.1
+
+- 强化 `sourcing-strategy` 的报告内容深度；
+- 支出分析新增整体、区域/项目、SKU、历史供方、价格、集中度、关键发现与采购含义最低标准；
+- 当地供应市场行情新增内部供应信号 + 外部公开市场研究 + 采购策略影响三层结构；
+- Web 可用时要求主动研究当地当前品类，原则上至少3个独立公开来源；
+- 新增 `report-content-quality-guide.md`；
+- 新增 spend / market completeness gate 与模板占位符检查；
+- 新增 `thin-analysis-regression` 回归测试，防止报告再次退化为标题/占位式输出；
+- 参考企业优秀案例的写作结构，仅抽象通用规则，不提交真实项目数据。
 
 ## v0.9.0
 
