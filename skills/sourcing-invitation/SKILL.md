@@ -1,8 +1,8 @@
 ---
 name: sourcing-invitation
-description: 基于已澄清的物业物资采购需求，在企业内部官方供方库中完成供方匹配、Hard Gate、证据说明和候选池分析；经采购员人工确认初版供方后，继续生成单一 BCC 邀标邮件 .eml、最终需求清单.xlsx、企业原版招标意向征集登记表.xlsx 和采购内部供方信息长名单.xlsx。禁止公网新增候选供方，不自动发送邮件。
+description: 基于已澄清的物业物资采购需求，在企业内部官方供方库中完成供方匹配、Hard Gate、证据说明和候选池分析；经采购员人工确认初版供方后，继续生成单一 BCC 邀标邮件 .eml、最终需求清单.xlsx、企业原版招标意向征集登记表.xlsx 和采购内部供方信息长名单.xlsx。最终 EML 正文必须为纯文本或标准 HTML，不得保留 Markdown 格式标记。禁止公网新增候选供方，不自动发送邮件。
 metadata:
-  version: "0.4.1"
+  version: "0.4.2"
   domain: "property-material-procurement"
   sourcing_method: "invitation-tender"
   supplier_source: "official-registry-only"
@@ -42,7 +42,7 @@ metadata:
 4. 需求品类已明确到可用于官方分类匹配的层级，或存在采购员待确认的官方分类候选；
 5. 配送/交付区域已明确。
 
-缺少任一项：
+缺少任一项时：
 
 - 不得输出“推荐邀标名单”；
 - 只能输出缺口与所需补充信息；
@@ -122,7 +122,6 @@ Registry Tier：
 ### Step A4 — Normalize Regions
 
 只允许行政区名称的一一规范化，例如“重庆 → 重庆市”“贵州 → 贵州省”。
-
 不得扩展推断未记录的配送能力。
 
 ### Step A5 — Material Supplier Gate
@@ -144,15 +143,12 @@ V1 只接受物资类供方。服务类、非采购类或无法判断记录不�
 对全部需求区域逐一检查：`full / partial / no_match / unknown`。
 
 例如官方字段只有“重庆”，需求为“重庆市 + 贵州省”，只能是 `partial`。
-
 没有任何 full match 时不得强行选择最高 Fit，应输出 `official_registry_coverage_gap`。
 
 ### Step A8 — Qualification / Status Gate
 
 资质只有在当前需求或企业正式规则明确要求时作为 Hard Gate。
-
 资质过期触发人工核验，不扩大为法律结论。
-
 官方库没有明确有效/冻结/禁用状态时：`registry_status = unknown`。
 
 ### Step A9 — Hard Gate Result
@@ -238,7 +234,7 @@ V1 只接受物资类供方。服务类、非采购类或无法判断记录不�
 - 联系信息状态
 - 备注
 
-**不再输出“供方编码”字段。** 供方内部 ID / supplier_id 可以继续存在于结构化数据中用于追溯，但不得作为 04 长名单展示列。
+**不输出“供方编码”字段。** 供方内部 ID / supplier_id 可继续存在于结构化数据中用于追溯，但不得作为 04 长名单展示列。
 
 规则：
 
@@ -260,14 +256,13 @@ V1 只接受物资类供方。服务类、非采购类或无法判断记录不�
 - 供方邮箱不得进入 `To` / `Cc`
 
 每个 BCC 地址必须能回溯到 04 长名单。
-
 冲突时：`BLOCK/HOLD: supplier_contact_bcc_mismatch`。
 
 ### Step B4 — Generate Single EML
 
 生成：`{{项目名称}}-邀标邮件.eml`
 
-规则：
+基础规则：
 
 - 每个项目只生成 1 个 EML；
 - Bcc = 全部已确认且邮箱已确认的供方；
@@ -278,12 +273,40 @@ V1 只接受物资类供方。服务类、非采购类或无法判断记录不�
 - EML 不嵌入附件；
 - 不自动发送。
 
-详细规则见：`references/eml-delivery-rules.md`。
+#### Markdown-Free EML Gate（强制）
+
+最终 `.eml` 正文必须为可直接阅读的纯文本或标准 HTML：
+
+- 推荐 `text/plain; charset=utf-8`；
+- 如使用 HTML，则必须是标准 `text/html; charset=utf-8`；
+- 内部 `.md` 模板只允许作为变量源，不得原样写入 EML；
+- 写入 EML 前必须移除/转换 Markdown 标题、强调、列表、引用、代码、链接等格式标记；
+- 纯文本分点优先使用中文序号、数字序号或 `•`，不要使用 Markdown 的 `- ` / `* ` / `+ ` 列表符；
+- 校验对象是“解码后的邮件正文”，不扫描 MIME Header、文件名或编码字节。
+
+以下 Markdown 格式标记不得残留在最终正文：
+
+- 行首 `# `、`## ` 等标题标记；
+- `**`、`__` 等强调标记；
+- 反引号和代码围栏；
+- `[文字](链接)` Markdown 链接；
+- 行首 `> ` 引用标记；
+- 行首 `- `、`* `、`+ ` 无序列表标记。
+
+发现任一 Markdown 格式残留时：
+
+`BLOCK/HOLD: eml_markdown_marker_detected`
+
+不得标记为 `ready_for_human_review`，必须清洗后重新生成。
+
+详细规则见：
+
+- `references/eml-delivery-rules.md`
+- `references/eml-markdown-free-test.md`
 
 ### Step B5 — Prepare Final Requirement Workbook
 
 02 = 人工确认的最终需求清单。
-
 不得重新优化、改数量、改规格、改区域或预填供方报价字段。
 
 ### Step B6 — Calculate Bid Bond Variable
@@ -314,7 +337,6 @@ V1 只接受物资类供方。服务类、非采购类或无法判断记录不�
 `Sheet1!N3`：`{{投标保证金金额}} → bid_bond_amount`。
 
 必须保持原模板工作表、行列结构、合并单元格、字体、边框、填充、对齐、行高列宽、打印设置、公式/验证及供方填写区域。
-
 禁止重新设计或新建类似表格替代企业原模板。
 
 ### Step B8 — Consistency Check
@@ -331,6 +353,8 @@ V1 只接受物资类供方。服务类、非采购类或无法判断记录不�
 - 04 长名单供方集合 = 人工确认初版供方集合
 - BCC 均能回溯到 04 长名单
 - 02/03 是唯一对外 Excel 附件
+- EML 无嵌入附件
+- EML 解码后正文通过 Markdown-Free Gate
 
 ### Step B9 — Human Send Review
 
@@ -340,7 +364,7 @@ Skill 只生成邮件草稿和文件，不自动发送。
 
 - BCC
 - To/Cc
-- 邮件正文
+- 邮件正文是否显示为正常纯文本/HTML且无 Markdown 标记
 - 02/03 附件
 - 03 中投标保证金金额
 - 截止时间及其他当前项目变量
@@ -383,6 +407,8 @@ handoff:
     generated: true
     format: eml
     mode: single_bcc_email
+    body_format: plain_text_or_html
+    markdown_free: true
     auto_send: false
   bid_bond:
     rate: 0.01
@@ -407,6 +433,7 @@ handoff:
 - 04 长名单不展示供方编码。
 - BCC 必须回溯到 04 长名单。
 - EML 不嵌入附件且不自动发送。
+- EML 最终正文不得保留 Markdown 格式标记。
 - 02/03 单独交付，由采购员发送前人工添加。
 - 03 必须复制企业原模板生成。
 - N3 保证金按当前项目预估总金额 × 1%，千元位向上取整。
@@ -419,6 +446,7 @@ handoff:
 3. Phase B 只覆盖人工确认初版供方；
 4. 04 长名单字段与模板一致且不包含供方编码；
 5. BCC 与长名单邮箱一致；
-6. 03 使用企业原模板且 N3 动态保证金正确；
-7. 邀标四件套可以直接供采购员审核使用；
-8. `supplier-shortlist` 可直接消费确认供方及后续真实回复。
+6. EML 解码后正文是正常纯文本/HTML且 Markdown-Free；
+7. 03 使用企业原模板且 N3 动态保证金正确；
+8. 邀标四件套可以直接供采购员审核使用；
+9. `supplier-shortlist` 可直接消费确认供方及后续真实回复。
