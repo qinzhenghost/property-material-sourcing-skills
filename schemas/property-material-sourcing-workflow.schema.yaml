@@ -1,0 +1,128 @@
+$schema: "https://json-schema.org/draft/2020-12/schema"
+$id: "https://example.local/schemas/property-material-sourcing-workflow.schema.yaml"
+title: "物业物资采购统一流程状态"
+type: object
+additionalProperties: false
+required:
+  - schema_version
+  - project_name
+  - current_phase
+  - phase_status
+  - checkpoints
+  - artifacts
+properties:
+  schema_version:
+    type: string
+    const: "0.1.0"
+  project_name:
+    type: string
+  current_phase:
+    type: string
+    enum:
+      - phase_0_history_optional
+      - phase_1_requirement
+      - phase_2_supplier_sourcing
+      - waiting_supplier_replies
+      - phase_3_shortlist
+      - phase_4_strategy
+      - completed
+      - blocked
+  phase_status:
+    type: object
+    additionalProperties: false
+    required: [phase_0, phase_1, phase_2, phase_3, phase_4]
+    properties:
+      phase_0: {$ref: "#/$defs/phase_state"}
+      phase_1: {$ref: "#/$defs/phase_state"}
+      phase_2: {$ref: "#/$defs/phase_state"}
+      phase_3: {$ref: "#/$defs/phase_state"}
+      phase_4: {$ref: "#/$defs/phase_state"}
+  checkpoints:
+    type: object
+    additionalProperties: false
+    required:
+      - agreement_scope_confirmed
+      - requirement_p0_cleared
+      - initial_supplier_pool_confirmed
+      - invitation_human_sent
+      - final_shortlist_confirmed
+      - strategy_ready_for_approval
+    properties:
+      agreement_scope_confirmed: {type: [boolean, "null"]}
+      growth_rate_confirmed: {type: [boolean, "null"]}
+      requirement_p0_cleared: {type: boolean}
+      initial_supplier_pool_confirmed: {type: boolean}
+      invitation_human_sent: {type: boolean}
+      final_shortlist_confirmed: {type: boolean}
+      strategy_ready_for_approval: {type: boolean}
+  blockers:
+    type: array
+    items:
+      type: object
+      additionalProperties: false
+      required: [code, phase, message]
+      properties:
+        code: {type: string}
+        phase: {type: string}
+        message: {type: string}
+        resolution_required: {type: [string, "null"]}
+  artifacts:
+    type: array
+    items:
+      type: object
+      additionalProperties: false
+      required: [artifact_name, phase, status]
+      properties:
+        artifact_name: {type: string}
+        phase: {type: string}
+        status:
+          type: string
+          enum: [source_input, generated_draft, human_confirmed, sent_external, superseded, final]
+        source_module: {type: [string, "null"]}
+        path_or_reference: {type: [string, "null"]}
+        evidence: {type: [string, "null"]}
+  human_decisions:
+    type: array
+    items:
+      type: object
+      additionalProperties: false
+      required: [decision_name, status]
+      properties:
+        decision_name: {type: string}
+        status:
+          type: string
+          enum: [pending, confirmed, changed, not_applicable]
+        value: {}
+        evidence: {type: [string, "null"]}
+  module_versions:
+    type: object
+    additionalProperties: false
+    properties:
+      historical_procurement_analysis: {type: [string, "null"]}
+      material_requirement_analysis: {type: [string, "null"]}
+      sourcing_invitation: {type: [string, "null"]}
+      supplier_shortlist: {type: [string, "null"]}
+      sourcing_strategy: {type: [string, "null"]}
+  resume:
+    type: object
+    additionalProperties: false
+    properties:
+      last_verified_checkpoint: {type: [string, "null"]}
+      next_action: {type: [string, "null"]}
+      rerun_required_phases:
+        type: array
+        items: {type: string}
+$defs:
+  phase_state:
+    type: object
+    additionalProperties: false
+    required: [status]
+    properties:
+      status:
+        type: string
+        enum: [not_started, in_progress, waiting_human, waiting_external, completed, skipped, blocked]
+      started_at: {type: [string, "null"]}
+      completed_at: {type: [string, "null"]}
+      notes:
+        type: array
+        items: {type: string}
