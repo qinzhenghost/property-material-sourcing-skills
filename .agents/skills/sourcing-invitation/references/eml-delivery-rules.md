@@ -22,6 +22,36 @@
 - `From`：仅在用户/运行环境明确提供时填写；
 - 缺失或冲突的供方邮箱进入 `missing_recipient_emails` / `needs_email_confirmation`，不得猜测。
 
+## EML 正文格式规则（强制）
+
+最终交付的 `.eml` 正文必须是可直接阅读的邮件文本，不得保留 Markdown 标记。
+
+允许的正文形式只有：
+
+- `text/plain; charset=utf-8`；或
+- 标准 HTML 邮件正文（如 `text/html; charset=utf-8`）。
+
+内部源模板即使使用 `.md` 扩展名，也只能作为变量模板来源；在序列化为 EML 前必须转换/清洗为纯文本或 HTML。
+
+最终 EML 的解码后正文不得出现用作格式控制的 Markdown 语法，包括但不限于：
+
+- 行首 `# `、`## ` 等 Markdown 标题标记；
+- `**加粗**`、`__加粗__` 等强调标记；
+- 反引号或代码围栏；
+- `[文字](链接)` 形式的 Markdown 链接；
+- 行首 `> ` 引用标记；
+- 行首 `- `、`* `、`+ ` 的 Markdown 无序列表标记。
+
+纯文本需要分点时，优先使用中文序号、阿拉伯数字序号或 Unicode 项目符号 `•`。
+
+Markdown-Free Gate 必须检查“解码后的正文内容”，不是检查 MIME Header、文件名或编码后的原始字节。
+
+如果发现 Markdown 格式标记：
+
+`BLOCK/HOLD: eml_markdown_marker_detected`
+
+不得把该 EML 标记为 `ready_for_human_review`，必须先清洗后重新生成。
+
 ## 附件规则
 
 EML 中：
@@ -39,9 +69,10 @@ attachments_embedded = false
 
 ## 状态
 
-- `ready_for_human_review`：所有已选供方邮箱均已确认；
+- `ready_for_human_review`：所有已选供方邮箱均已确认，且正文通过 Markdown-Free Gate；
 - `draft_missing_recipient_email`：至少一个已选供方缺邮箱；
-- `draft_recipient_email_conflict`：至少一个邮箱来源存在冲突。
+- `draft_recipient_email_conflict`：至少一个邮箱来源存在冲突；
+- `blocked_markdown_marker_detected`：最终正文仍存在 Markdown 格式标记。
 
 无论哪种状态都不得自动发送。
 
