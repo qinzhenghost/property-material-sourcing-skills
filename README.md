@@ -29,6 +29,7 @@ historical-procurement-analysis
         ├─ 选择协议编号
         ├─ 仅保留 已完成 / 执行中
         ├─ 不足12个月 → 12个月年度基线
+        ├─ 区域/业务单元/订单金额段/SKU/供方/价格支出结构
         ├─ 确认年度增量比例
         └─ 历史测算需求清单.xlsx
         ↓
@@ -71,19 +72,21 @@ sourcing-strategy
 
 | Skill | 作用 | 状态 |
 |---|---|---|
-| `historical-procurement-analysis` | 协议选择、有效订单过滤、12个月年化、年度增量、历史测算需求清单 | ✅ |
+| `historical-procurement-analysis` | 协议选择、有效订单过滤、12个月年化、年度增量、多维历史支出 Handoff | ✅ |
 | `material-requirement-analysis` | 需求诊断、P0澄清、强制生成澄清/最终需求清单 Excel | ✅ |
 | `sourcing-invitation` | 官方供方匹配 + 人工确认 + 邀标四件套 | ✅ |
 | `supplier-shortlist` | 供方回复 → 短名单建议 → 人工确认 → 短名单报批 + strategy_handoff | ✅ |
 | `sourcing-strategy` | 深度支出/市场分析 + 采购方案/策略报告 | ✅ |
 
-## historical-procurement-analysis v0.5.5
+## historical-procurement-analysis v0.5.6
 
 - 用户必须明确选择协议范围；
 - 仅 `已完成 / 执行中` 订单进入统计；
 - 不足12个月必须折算12个月年度基线；
 - 年度预计采购量始终非空；
 - 年度增量缺少两年可比数据时由采购员确认补数据 / 预估增量 / 0%增量；
+- 有数据时向策略报告 Handoff 提供：整体、区域、业务单元/军种/业态/项目、订单金额段、SKU/Pareto、历史供方集中度、价格分析；
+- 订单编号 + 订单金额存在时必须分析订单碎片化，为“免运额度/最低起送”提供依据；
 - 输出 `{{项目名称}}-历史测算需求清单.xlsx`；
 - 历史参考价不得预填供应商报价字段。
 
@@ -109,8 +112,6 @@ next_phase: official_supplier_matching
 
 ### Phase B — 邀标四件套
 
-采购员确认初版供方后固定生成：
-
 ```text
 01 {{项目名称}}-邀标邮件.eml
 02 {{项目名称}}-最终需求清单.xlsx
@@ -127,27 +128,11 @@ next_phase: official_supplier_matching
 
 ### Phase A — 供方回复与短名单草稿
 
-输入 `sourcing-invitation` 已确认初版供方长名单和供方实际回复，使用企业 `供方短名单模板.xlsx` 汇总：
-
-- 头部企业合作业绩；
-- 工厂 / 代理 / 资质 / 仓储 / 运输等能力；
-- 公司性质；
-- 合作意向；
-- 合作历史；
-- 注册资本；
-- 供方库分类；
-- 邮箱 / 电话；
-- AI建议：建议入围 / 待澄清 / 不建议入围。
-
-生成：
-
-`{{项目名称}}-供方短名单.xlsx`
-
-然后必须暂停等待采购员确认。AI建议不等于最终短名单。
+使用企业 `供方短名单模板.xlsx` 汇总供方实际回复，AI仅输出 `建议入围 / 待澄清 / 不建议入围`，随后必须暂停等待采购员确认。
 
 ### Phase B — 短名单报批
 
-采购员确认后，同一 Skill：
+采购员确认后：
 
 1. 固化最终 `{{项目名称}}-供方短名单.xlsx`；
 2. 生成 `{{项目名称}}-短名单报批邮件.md`；
@@ -156,18 +141,9 @@ next_phase: official_supplier_matching
 
 Phase B 不允许重新评分、重新排序或改变采购员确认结果。
 
-## sourcing-strategy v0.7.2
+## sourcing-strategy v0.7.3
 
-直接消费：
-
-- confirmed requirement；
-- `sourcing-invitation` 的官方库覆盖 / 保证金等可追溯结果；
-- `supplier-shortlist.strategy_handoff` 的人工确认最终短名单；
-- 历史采购分析（如有）；
-- 当前项目采购规则；
-- 有明确来源的公开市场资料。
-
-生成：
+直接消费 confirmed requirement、官方库/保证金结果、人工确认 shortlist_handoff、历史采购分析和当前项目规则，输出：
 
 ```text
 {{项目名称}}-strategy-data.yaml
@@ -178,40 +154,49 @@ Phase B 不允许重新评分、重新排序或改变采购员确认结果。
 
 有历史数据时必须尽可能形成：
 
-- 整体历史实际支出 + 年化/预测支出；
-- 区域/项目/业态 Top 维度及占比；
-- Top 5 高支出 SKU、数量、均价、金额、占比；
-- 历史供应商集中度（有供方字段时）；
+- 整体实际支出 + 年化/预测支出；
+- 配送区域金额/占比/订单数；
+- 业务单元/军种/业态/项目金额与集中度；
+- 订单金额段与订单碎片化；
+- Top 5 SKU、Pareto 80%结构、数量/均价/金额/占比；
+- 历史供应商集中度；
 - 可比 SKU 价格分析；
-- 至少3条带数字的关键发现；
-- 至少2条采购策略含义。
+- “免运额度/最低配送金额”的订单及履约依据；
+- 至少3条数字化关键发现；
+- 至少2条采购含义。
 
-无完整历史数据也不能只写“暂无数据”，必须降级做计划支出/数量结构分析并明确缺口。
+每个可用维度优先使用“数据表 → 结构特征 → 影响 → 采购动作”的写法。没有足够数据时降级分析并明确缺口，不得只写“暂无数据”。
 
 ### 当地供应市场行情最低深度
 
 必须组合：
 
 1. 内部供应市场信号：官方库供方数量、区域覆盖、邀约、回复、短名单、商务条件接受度；
-2. 外部公开市场：供应格局、上游/成本、物流履约、价格趋势、政策/标准；
-3. 采购策略影响：至少3条与本项目直接相关的动作。
+2. 外部公开市场：供应格局、成本驱动、价格趋势、政策/标准；
+3. 本地履约经济性：配送半径、区县/跨区域、小额高频订单、仓储、搬运、紧急配送、最低起送反馈；
+4. 采购策略影响：至少3条与本项目直接相关的动作。
 
-Web 可用且地区/品类明确时，应主动研究公开市场，原则上至少3个独立来源并优先近12个月资料。
+Web 可用且地区/品类明确时，应主动研究公开市场；`complete` 原则上至少3个独立来源并优先近12个月资料。具体成本比例仅在有可靠来源时允许填写。
 
 ### 内容质量 Gate
 
 - 不得只填模板标题；
 - 不得残留 `X / XX / XXX / X%`；
-- 表格后必须有结论；
+- 不得继承参考案例具体金额、供应商、日期、人员、成本比例或定标规则；
+- 支出表格后必须有分析判断和采购含义；
+- 市场章节必须有供应格局、成本驱动、价格/履约因素和采购动作；
+- 免运/最低配送阈值属于 Human Decision，AI只能提出有依据的建议；
 - 短名单先说明官方库→邀约→回复→入围漏斗，再逐家写可追溯理由；
-- 定标、目标价、备选机制和商务条款必须逻辑一致；
 - 风险优先按“触发场景→影响→处置”写；
-- `strategy-data.yaml` 必须标记 spend/market completeness status；
+- `strategy-data.yaml` 使用 schema `0.7.3` 记录 dimension coverage、order amount distribution、free shipping analysis、market cost structure 和 content depth checks；
 - 分析深度不足不得标记 `ready_for_approval`。
 
 详细规则见：
 
-`references/report-content-quality-guide.md`
+- `references/report-content-depth-rules.md`
+- `references/report-content-quality-guide.md`
+- `references/template-v3-content-blueprint.md`
+- `references/procurement-plan-template-mapping.md`
 
 ## 核心原则
 
@@ -229,28 +214,24 @@ Web 可用且地区/品类明确时，应主动研究公开市场，原则上至
 12. N3 投标保证金按当前项目预估总金额动态计算。
 13. Phase B 报批不得重新改变采购员确认的最终短名单。
 14. sourcing-strategy 必须消费人工确认的 shortlist_handoff，而不是 Phase A AI建议。
-15. sourcing-strategy 的核心分析章节必须形成“事实 → 分析 → 判断 → 采购动作”。
+15. sourcing-strategy 核心分析章节必须形成“事实 → 分析 → 判断 → 采购动作”。
 16. 所有重要结论、统计和计算必须可追溯。
 
 ## v0.9.1
 
-- 强化 `sourcing-strategy` 的报告内容深度；
-- 支出分析新增整体、区域/项目、SKU、历史供方、价格、集中度、关键发现与采购含义最低标准；
-- 当地供应市场行情新增内部供应信号 + 外部公开市场研究 + 采购策略影响三层结构；
-- Web 可用时要求主动研究当地当前品类，原则上至少3个独立公开来源；
-- 新增 `report-content-quality-guide.md`；
-- 新增 spend / market completeness gate 与模板占位符检查；
-- 新增 `thin-analysis-regression` 回归测试，防止报告再次退化为标题/占位式输出；
-- 参考企业优秀案例的写作结构，仅抽象通用规则，不提交真实项目数据。
+- 强化 `sourcing-strategy` 报告内容深度，升级至 v0.7.3；
+- 支出分析覆盖整体、区域、业务单元/军种/业态、订单金额段、SKU/Pareto、历史供方、价格和免运/最低配送依据；
+- 当地供应市场行情升级为内部供应信号 + 外部公开研究 + 成本/价格 + 本地履约 + 采购动作；
+- `schemas/sourcing-strategy.schema.yaml` 升级为 0.7.3，增加多维支出、订单金额分布、免运分析、成本构成和 content depth checks；
+- `historical-procurement-analysis` 升级至 v0.5.6，向策略报告提供更丰富的支出 Handoff；
+- 新增/强化 `report-content-quality-guide.md`、`template-v3-content-blueprint.md`、`report-content-depth-rules.md`；
+- 强化 `thin-analysis-regression`，防止报告退化为标题/占位式输出；
+- 参考企业优秀案例只抽象写作结构，不提交真实项目数据。
 
 ## v0.9.0
 
 - 将 `shortlist-approval` 合并进 `supplier-shortlist`；
 - `supplier-shortlist` 升级至 v0.5.0，拆分 Phase A / Phase B；
-- Phase A 生成企业短名单表草稿并强制等待采购员确认；
-- Phase B 固化最终短名单并生成报批邮件 + strategy_handoff；
 - 删除独立 `shortlist-approval` Skill 入口；
-- 新增统一 `schemas/supplier-shortlist.schema.yaml`；
-- 删除旧 `schemas/shortlist-approval.schema.yaml`；
-- `sourcing-strategy` 升级至 v0.7.1，只消费合并后的人工确认 shortlist_handoff；
-- 主流程压缩为 5 个 Skill。
+- `sourcing-strategy` 只消费人工确认 shortlist_handoff；
+- 主流程压缩为5个 Skill。
