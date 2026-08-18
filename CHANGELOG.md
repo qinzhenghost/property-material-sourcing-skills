@@ -1,5 +1,27 @@
 # CHANGELOG
 
+## v0.9.0
+
+结构性合并：`shortlist-approval` → `supplier-shortlist`。
+
+- `supplier-shortlist` 升级至 `0.5.0`；
+- 原供方回复汇总与短名单草稿流程保留为 Phase A；
+- Phase A 继续使用企业 `供方短名单模板.xlsx`，输出 `{{项目名称}}-供方短名单.xlsx`；
+- AI 仅可输出 `建议入围 / 待澄清 / 不建议入围`，不得将建议写成最终短名单；
+- Phase A 结束后强制暂停等待采购员人工确认最终入围 / 不入围 / 待澄清状态；
+- 原 `shortlist-approval` 流程吸收到 Phase B；
+- Phase B 只能消费采购员确认结果，不得重新评分、重新排序或改变短名单结论；
+- Phase B 固定输出最终 `{{项目名称}}-供方短名单.xlsx`、`{{项目名称}}-短名单报批邮件.md`、`{{项目名称}}-shortlist-handoff.yaml`；
+- 原 `shortlist-approval-email.md` 模板迁入 `supplier-shortlist/templates/`；
+- 新增 `schemas/supplier-shortlist.schema.yaml`，统一承载 AI 建议、人工确认、报批邮件与 strategy_handoff；
+- 删除旧 `schemas/shortlist-approval.schema.yaml`；
+- 删除独立 `shortlist-approval` Skill canonical / 兼容镜像入口；
+- `sourcing-strategy` 升级至 `0.7.1`，Required Input 改为 `supplier-shortlist.strategy_handoff`；
+- sourcing-strategy 的短名单一致性检查改为只接受人工确认后的 shortlist_handoff；
+- sourcing-strategy 的保证金优先消费 `sourcing-invitation.bid_bond` 当前项目可追溯计算结果；
+- 主流程由 6 个 Skill 压缩为 5 个 Skill；
+- `.agents/skills/` 与兼容 `skills/` 同步。
+
 ## v0.8.0
 
 结构性合并：`official-supplier-matching` → `sourcing-invitation`。

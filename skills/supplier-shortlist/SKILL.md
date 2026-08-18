@@ -1,109 +1,112 @@
 ---
 name: supplier-shortlist
-description: 根据官方库长名单及供方回复情况，按企业既有短名单表模板生成供方短名单筛选表。V1仅做汇总与入围/未入围原因整理，不做复杂评分、报价分析或自动定标。
+description: 读取 sourcing-invitation 已确认的供方信息长名单及供方真实回复，汇总形成供方短名单筛选表；采购员人工确认最终短名单后，在同一 Skill 内继续生成短名单报批邮件草稿与 sourcing-strategy 所需的 strategy_handoff。V1不做复杂评分、报价排名或自动定标。
 metadata:
-  version: "0.4.0"
+  version: "0.5.0"
   domain: "property-material-procurement"
   sourcing_method: "invitation-tender"
+  stage: "supplier-shortlist-and-approval"
 ---
 
 # Supplier Shortlist
 
 ## 1. Purpose
 
-读取已确认的官方库供方长名单，以及各供方对邀标邮件/《招标意向征集登记表》的实际回复，生成一张与企业现有模板一致的《供方短名单筛选及入围原因》Excel。
+本 Skill 合并原 `supplier-shortlist` 与 `shortlist-approval`，覆盖一个完整业务阶段：
 
-本 Skill 只负责：
+`供方回复 → 短名单筛选表 → 人工确认最终短名单 → 报批邮件草稿 → strategy_handoff`
 
-> 汇总回复 → 填入短名单表 → 整理是否入围及原因 → 等待采购员最终确认。
+分为两个强制阶段：
 
-不负责：
+- **Phase A — Supplier Reply & Shortlist Draft**：汇总供方真实回复，形成短名单筛选表草稿。
+- **Phase B — Shortlist Approval Package**：只有采购员明确确认最终短名单后，才生成正式报批材料和后续策略 Handoff。
+
+人工确认节点保留在 Skill 内部，不再单独调用 `shortlist-approval`。
+
+## 2. Scope / Upstream / Downstream
+
+- Domain: 物业物资类采购
+- Sourcing method: 邀标制
+- Required upstream: `sourcing-invitation`
+- Default downstream: `sourcing-strategy`
+
+本 Skill 不负责：
 
 - 复杂评分；
 - 报价排名；
 - 成本模型；
 - 自动定标；
 - 从公网新增供方；
-- 替采购员作最终短名单决策。
+- 替采购员作最终短名单决定；
+- 在 Phase B 重新评价或重新排序采购员已确认的短名单。
 
-## 2. Required Inputs
+## 3. Required Inputs
 
 至少需要：
 
-1. `official-supplier-matching` 已确认的库内长名单；
+1. `sourcing-invitation` 输出的 `{{项目名称}}-供方信息长名单.xlsx` 或等价 confirmed initial supplier pool；
 2. 供方邮件回复和/或回传的《招标意向征集登记表》；
 3. 当前项目已确认的关键邀标条件；
 4. `templates/供方短名单模板.xlsx`。
 
-可选补充：
+Phase B 额外必须具备：
+
+5. 采购员对最终入围 / 不入围 / 待澄清结果的明确确认。
+
+可选：
 
 - 官方供方库中的注册资本、供方库分类、合作历史、联系人、邮箱、电话；
-- 采购员人工补充的合作业绩、仓储/运输/授权/资质等已核实信息。
+- 采购员人工补充的已核实合作业绩、仓储/运输/授权/资质信息；
+- 审批收件人 / 抄送人（仅在用户明确提供时使用）。
 
-## 3. Source Rules
+## 4. Source of Truth
+
+### 供应商身份
+
+必须来自 `sourcing-invitation` 已确认初版供方池 / 供方信息长名单。
+
+不得新增不在该集合中的公网供方。
 
 ### 官方库字段优先用于
 
-- 库内长名单；
 - 是否有合作历史；
 - 注册资本；
 - 供方库分类；
-- 邮箱、电话等已有联系人信息。
+- 联系人、邮箱、电话；
+- 其他官方明确字段。
 
 ### 供方回复优先用于
 
 - 是否有合作意向；
-- 是否可供应清单全部物资；
+- 是否可供应全部清单；
 - 配送区域；
 - 账期接受情况；
-- 保证金；
+- 保证金接受情况；
 - 货期；
 - 仓储、车辆、团队；
 - 品牌授权、代理情况；
 - 合作案例；
-- 其他不参与原因。
+- 明确不参与原因。
 
-### 禁止
+### Human Decision
 
-- AI 根据公司名称猜测业绩、仓储、授权、资质或配送能力；
-- 将“未回复”写成“否”；
-- 把缺失信息自行补全；
-- 修改供方真实回复的含义。
+最终短名单状态只能由采购员确认。
 
-缺失内容使用：
+AI 的 `建议入围 / 待澄清 / 不建议入围` 不等于最终结果。
 
-- `未反馈`
-- `待澄清`
-- 或在明确无合作意向且无需继续收集时使用 `/`。
+## 5. Phase A — Supplier Reply & Shortlist Draft
 
-## 4. Output Columns
+### Step A1 — Load Confirmed Longlist
 
-必须按照现有企业模板输出以下结构，不自行新增复杂评分列：
+以 `sourcing-invitation` 人工确认后的供方信息长名单为底表。
 
-| 列 | 字段 |
-|---|---|
-| A | 序号 |
-| B | 库内长名单 |
-| C | 头部企业合作业绩（2家及以上） |
-| D | 工厂、代理商、资质证书、基地、设施设备、仓储空间、运输工具等（具体类别具体分析） |
-| E | 公司性质（是否为个体户） |
-| F | 是否有合作意向 |
-| G | 是否有合作历史 |
-| H | 注册资本（万） |
-| I | 供方库分类 |
-| J | 是否入围及未入围原因 |
-| K | 邮箱 |
-| L | 电话 |
+要求：
 
-## 5. Workflow
+- 保留全部本轮已确认邀标供方；
+- 不因未回复而删除供方；
+- 不新增长名单外供方。
 
-### Step 1 — Load Longlist
-
-以 `official-supplier-matching` 人工确认后的供方长名单为底表。
-
-不得新增不在官方长名单中的供方。
-
-### Step 2 — Merge Official Registry Data
+### Step A2 — Merge Official Registry Data
 
 尽可能补入：
 
@@ -113,124 +116,256 @@ metadata:
 - 邮箱；
 - 电话。
 
-如官方库不存在对应字段则保留空白/待补充，不推断。
+无官方字段则留空/待补充，不推断。
 
-### Step 3 — Parse Supplier Replies
+### Step A3 — Parse Supplier Replies
 
-逐家读取供方回复，提取与当前品类相关的信息：
+逐家提取与当前品类相关的真实回复：
 
 - 头部企业合作案例；
-- 工厂/代理/品牌授权/资质；
+- 工厂 / 代理 / 品牌授权 / 资质；
 - 仓储面积及库存能力；
-- 配送车辆及配送团队；
-- 是否能覆盖需求区域；
-- 是否能供应全部清单；
-- 是否接受当前账期；
-- 是否接受保证金等关键邀标条件；
-- 是否明确有合作意向；
-- 明确不参与的原因。
+- 配送车辆及团队；
+- 配送区域；
+- 是否供应全部清单；
+- 是否接受账期；
+- 是否接受保证金；
+- 是否有合作意向；
+- 明确不参与原因。
 
-只填写供方实际回复或已核实信息。
+禁止：
 
-### Step 4 — Fill Necessary / Attention Conditions
+- 把“未回复”写成“否”；
+- AI 根据公司名称猜测能力；
+- 修改供方真实回复含义。
 
-按照模板归类：
+缺失内容使用 `未反馈` / `待澄清`；明确无需继续收集时可使用 `/`。
 
-#### 准入条件（必要条件）
+### Step A4 — Fill Enterprise Shortlist Template
 
-- 头部企业合作业绩；
-- 工厂/代理/资质/基地/仓储/运输等品类关键能力；
-- 公司性质；
-- 是否有合作意向。
+必须使用：
 
-#### 关注条件（非必要）
+`.agents/skills/supplier-shortlist/templates/供方短名单模板.xlsx`
 
-- 是否有合作历史；
-- 注册资本。
+保持企业原版式，至少保留以下列：
 
-关注条件用于采购员判断，但不得单独因为“无合作历史”或“注册资本较低”就自动判定不入围，除非当前企业规则明确把它设为必要门槛。
+| 列 | 字段 |
+|---|---|
+| A | 序号 |
+| B | 库内长名单 |
+| C | 头部企业合作业绩（2家及以上） |
+| D | 工厂、代理商、资质证书、基地、设施设备、仓储空间、运输工具等 |
+| E | 公司性质（是否为个体户） |
+| F | 是否有合作意向 |
+| G | 是否有合作历史 |
+| H | 注册资本（万） |
+| I | 供方库分类 |
+| J | 是否入围及未入围原因 |
+| K | 邮箱 |
+| L | 电话 |
 
-### Step 5 — Generate Column J
+不得自行增加复杂评分列。
 
-`是否入围及未入围原因` 只输出三种类型：
+### Step A5 — AI Recommendation in Column J
 
-#### A. 建议入围
+Phase A 只允许三类：
 
-格式建议：
+#### `建议入围`
 
-`是，{基于真实回复整理的主要满足条件}`
+格式：`建议入围：{可追溯的主要满足条件}`
 
-例如信息已明确时，可归纳：
+#### `待澄清`
 
-- 接受当前账期；
-- 可供应清单内全部物资；
-- 配送范围满足；
-- 有自有/明确配送资源；
-- 能满足配送时效；
-- 接受保证金；
-- 其他当前项目关键条件。
+格式：`待澄清：{具体缺失或冲突项}`
 
-不得写入供方未回复的优势。
+#### `不建议入围`
 
-#### B. 待澄清
+只在真实资料明确支持时使用，例如：
 
-当供方有合作意向，但关键必要信息缺失或回复互相冲突：
-
-`待澄清：{具体缺失/冲突项}`
-
-#### C. 不建议入围
-
-当供方明确无合作意向，或明确不能满足当前项目关键条件：
-
-直接写真实原因，例如：
-
-- 无法满足配送范围；
-- 不接受账期；
-- 不缴纳投标保证金；
 - 明确不参加；
-- 其他供方明确反馈的原因。
+- 无法覆盖配送区域；
+- 明确不接受账期；
+- 明确不接受保证金；
+- 明确不能满足当前项目关键条件。
 
-不需要额外生成复杂评分说明。
+不得用“无合作历史”或“注册资本较低”等关注条件单独判定不入围，除非当前企业规则明确将其设为必要门槛。
 
-### Step 6 — Human Checkpoint
+### Step A6 — Generate Shortlist Workbook
 
-生成表格后必须由采购员确认：
+生成：
 
-- 入围供方；
-- 待澄清供方；
-- 不入围供方及原因。
+`{{项目名称}}-供方短名单.xlsx`
 
-AI生成的是“短名单筛选表草稿”，不是最终定标结果。
+此时状态必须是：
 
-## 6. Output
+`shortlist_status = draft_pending_human_confirmation`
 
-唯一主要交付物：
+### Step A7 — Human Shortlist Checkpoint（强制）
 
-`{{项目名称}}供方短名单.xlsx`
+输出短名单草稿后必须暂停，等待采购员逐项或整体确认：
 
-要求：
+- shortlisted；
+- excluded；
+- pending_clarification。
 
-- 使用 `templates/供方短名单模板.xlsx` 的原版式；
-- 标题替换为当前项目名称；
-- 保留库内长名单中所有参与本轮沟通的供方，包括未入围供方；
-- 保留未入围原因，便于过程留痕；
-- 不额外生成报告或长篇分析，除非用户明确要求。
+未确认前：
 
-## 7. Guardrails
+- 不得把“建议入围”写成“已入围”；
+- 不得生成可报批状态的 Handoff；
+- 默认不进入 sourcing-strategy。
 
-- 官方库长名单是供应商身份 Source of Truth。
-- 供方实际回复是参与意愿与条件 Source of Truth。
-- 不新增公网供方。
-- 不虚构业绩、资质、仓储、车辆、授权或合作意愿。
-- 不把未回复自动判定为否。
-- 不用非必要关注条件替代必要条件。
-- 不自动定标。
+如果采购员明确要求，可提前生成带 `DRAFT / 待确认` 标识的报批邮件草稿，但不能写成已确认短名单。
 
-## 8. Success Criteria
+## 6. Phase B — Shortlist Approval Package
 
-成功标准只有四条：
+只有 `human_shortlist_checkpoint.status = confirmed` 才进入。
 
-1. 官方长名单里的供方均被正确汇总；
-2. 供方回复被准确映射到现有模板字段；
-3. 每家供方的“入围/未入围原因”可追溯到真实回复或官方数据；
-4. 最终输出是一张采购员可以直接审核的短名单 Excel。
+### Step B1 — Freeze Human-Confirmed Decisions
+
+读取并锁定：
+
+- 最终入围；
+- 最终不入围；
+- 待澄清；
+- 未回复/未完成确认。
+
+Phase B **不得重新评分、重新排序或改变这些结论**。
+
+### Step B2 — Finalize Shortlist Workbook
+
+同一企业短名单模板中，将人工确认结果反映到最终版本。
+
+输出仍为：
+
+`{{项目名称}}-供方短名单.xlsx`
+
+但结构化状态改为：
+
+`shortlist_status = human_confirmed`
+
+必须保留不入围供方及真实原因，便于过程留痕。
+
+### Step B3 — Build Process Summary
+
+统计可追溯的：
+
+- 初版邀标长名单数量；
+- 本轮实际沟通数量；
+- 已回复数量；
+- 最终入围数量；
+- 不入围数量；
+- 待澄清数量。
+
+无可靠数据写 `未统计`，不得自行推算。
+
+### Step B4 — Generate Approval Email Draft
+
+使用：
+
+`.agents/skills/supplier-shortlist/templates/shortlist-approval-email.md`
+
+生成：
+
+`{{项目名称}}-短名单报批邮件.md`
+
+邮件只解决：
+
+1. 项目是什么；
+2. 本轮征集/筛选情况；
+3. 最终确认短名单有哪些；
+4. 不入围 / 待澄清概况；
+5. 请审批什么。
+
+如果审批人姓名、邮箱、职位未明确：
+
+- 保留模板变量或使用泛称；
+- 不猜测。
+
+邮件只是草稿，不自动发送。
+
+### Step B5 — Build Strategy Handoff
+
+生成：
+
+`{{项目名称}}-shortlist-handoff.yaml`
+
+至少包含：
+
+```yaml
+strategy_handoff:
+  workflow_stage: shortlist_confirmed
+  shortlist:
+    longlist_count:
+    contacted_count:
+    replied_count:
+    shortlisted_count:
+    excluded_count:
+    pending_count:
+    shortlisted_suppliers: []
+    excluded_suppliers: []
+    pending_suppliers: []
+  selection_rationale: []
+  supplier_market_observations: []
+  risk_flags: []
+  human_confirmation:
+    shortlist_confirmed: true
+  next_skill: sourcing-strategy
+```
+
+`supplier_market_observations` 只能概括本轮官方库和真实回复，例如“可响应供方数量有限”“多家供方对账期存在反馈”“部分供方区域覆盖不足”，不得扩展成未经调研的整个市场行情。
+
+### Step B6 — Human Approval Draft Review
+
+采购员在发送报批邮件前确认：
+
+- 最终短名单；
+- 未入围原因；
+- 邮件统计数字；
+- 报批事项；
+- 收件人 / 抄送人；
+- 短名单附件。
+
+## 7. Output Contract
+
+### Phase A 未完成人工确认
+
+主要交付：
+
+1. `{{项目名称}}-供方短名单.xlsx`（draft_pending_human_confirmation）；
+2. 短名单建议摘要；
+3. 待澄清事项；
+4. Human Checkpoint。
+
+### Phase B 人工确认后
+
+固定交付：
+
+1. `{{项目名称}}-供方短名单.xlsx`（human_confirmed）；
+2. `{{项目名称}}-短名单报批邮件.md`；
+3. `{{项目名称}}-shortlist-handoff.yaml`。
+
+下游：`sourcing-strategy`。
+
+## 8. Guardrails
+
+- 官方确认长名单是供应商身份 Source of Truth；
+- 供方真实回复是参与意愿与条件 Source of Truth；
+- 不新增公网供方；
+- 不虚构业绩、资质、仓储、车辆、授权或合作意愿；
+- 不把未回复自动判定为否；
+- 不用非必要关注条件替代必要条件；
+- AI建议不等于人工确认；
+- Phase B 不重新评价已确认短名单；
+- 不猜审批人姓名、邮箱或职位；
+- 不自动发送邮件；
+- 所有统计数字和理由必须可追溯。
+
+## 9. Success Criteria
+
+1. 本轮邀标供方均被正确汇总；
+2. 供方回复准确映射到企业短名单模板；
+3. AI短名单建议与人工最终决定严格分离；
+4. Phase A 必须停在人工确认节点；
+5. Phase B 不改变采购员确认结果；
+6. 报批邮件与最终短名单一致；
+7. `strategy_handoff` 可被 `sourcing-strategy` 直接消费。
