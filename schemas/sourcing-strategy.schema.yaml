@@ -23,7 +23,7 @@ required:
 properties:
   schema_version:
     type: string
-    const: "0.7.0"
+    const: "0.7.2"
 
   report_status:
     type: string
@@ -98,7 +98,20 @@ properties:
   spend_analysis:
     type: object
     additionalProperties: false
+    required:
+      - completeness_status
+      - analysis_basis
+      - key_findings
+      - sourcing_implications
+      - data_limitations
     properties:
+      completeness_status:
+        type: string
+        enum: [complete, partial, insufficient_data]
+      analysis_basis:
+        type: array
+        items:
+          type: string
       historical_period:
         type: [string, "null"]
       historical_tax_included_spend:
@@ -110,17 +123,80 @@ properties:
       projected_spend:
         type: [number, "null"]
         minimum: 0
+      average_period_spend:
+        type: [number, "null"]
+        minimum: 0
       yoy_change_rate:
         type: [number, "null"]
+      overall_findings:
+        type: array
+        items:
+          type: string
       region_findings:
         type: array
         items:
           type: string
+      region_breakdown:
+        type: array
+        items:
+          $ref: "#/$defs/spend_dimension_item"
       sku_findings:
         type: array
         items:
           type: string
+      sku_breakdown:
+        type: array
+        items:
+          type: object
+          additionalProperties: false
+          required: [sku_name]
+          properties:
+            sku_name:
+              type: string
+            specification:
+              type: [string, "null"]
+            brand:
+              type: [string, "null"]
+            unit:
+              type: [string, "null"]
+            quantity:
+              type: [number, "null"]
+            spend_amount:
+              type: [number, "null"]
+              minimum: 0
+            spend_share:
+              type: [number, "null"]
+              minimum: 0
+              maximum: 1
+            average_unit_price:
+              type: [number, "null"]
+              minimum: 0
+            tax_basis:
+              type: [string, "null"]
+              enum: [tax_included, pre_tax, mixed, unknown, null]
+            note:
+              type: [string, "null"]
+      supplier_findings:
+        type: array
+        items:
+          type: string
+      supplier_breakdown:
+        type: array
+        items:
+          $ref: "#/$defs/spend_dimension_item"
+      concentration_findings:
+        type: array
+        items:
+          type: string
       price_findings:
+        type: array
+        items:
+          type: string
+      key_findings:
+        type: array
+        items:
+          type: string
+      sourcing_implications:
         type: array
         items:
           type: string
@@ -132,7 +208,33 @@ properties:
   market_analysis:
     type: object
     additionalProperties: false
+    required:
+      - completeness_status
+      - internal_supply_signals
+      - market_characteristics
+      - cost_drivers
+      - sourcing_implications
+      - sources
     properties:
+      completeness_status:
+        type: string
+        enum: [complete, partial, public_research_incomplete]
+      target_regions:
+        type: array
+        items:
+          type: string
+      category:
+        type: [string, "null"]
+      research_date:
+        type: [string, "null"]
+      internal_supply_signals:
+        type: array
+        items:
+          type: string
+      supply_landscape:
+        type: array
+        items:
+          type: string
       market_characteristics:
         type: array
         items:
@@ -141,11 +243,19 @@ properties:
         type: array
         items:
           type: string
+      local_fulfillment_factors:
+        type: array
+        items:
+          type: string
       price_trends:
         type: array
         items:
           type: string
       regulatory_factors:
+        type: array
+        items:
+          type: string
+      market_risks:
         type: array
         items:
           type: string
@@ -317,6 +427,10 @@ properties:
       - shortlist_consistent
       - commercial_terms_consistent
       - award_rule_consistent
+      - spend_analysis_complete_enough
+      - market_analysis_complete_enough
+      - no_template_placeholders
+      - template_field_mapping_consistent
     properties:
       quantity_consistent:
         type: boolean
@@ -329,6 +443,14 @@ properties:
       commercial_terms_consistent:
         type: boolean
       award_rule_consistent:
+        type: boolean
+      spend_analysis_complete_enough:
+        type: boolean
+      market_analysis_complete_enough:
+        type: boolean
+      no_template_placeholders:
+        type: boolean
+      template_field_mapping_consistent:
         type: boolean
       blockers:
         type: array
@@ -375,3 +497,25 @@ $defs:
       confidence:
         type: string
         enum: [high, medium, low]
+
+  spend_dimension_item:
+    type: object
+    additionalProperties: false
+    required: [dimension_name]
+    properties:
+      dimension_name:
+        type: string
+      spend_amount:
+        type: [number, "null"]
+        minimum: 0
+      spend_share:
+        type: [number, "null"]
+        minimum: 0
+        maximum: 1
+      quantity:
+        type: [number, "null"]
+        minimum: 0
+      yoy_change_rate:
+        type: [number, "null"]
+      note:
+        type: [string, "null"]
