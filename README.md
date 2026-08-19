@@ -1,16 +1,24 @@
-# Property Material Sourcing Skills — v0.10.0
+# Property Material Sourcing Skills — v0.11.0
 
 物业物资类 AI 邀标寻源 Skill 库。
 
-## 推荐运行入口
+## 唯一运行目录
 
-从 v0.10.0 起，推荐只调用一个主 Skill：
+从 v0.11.0 起，仓库只保留一个 Skill Source of Truth：
+
+```text
+.agents/skills/
+```
+
+端到端任务推荐只调用统一主 Skill：
 
 ```text
 .agents/skills/property-material-sourcing/
 ```
 
 主 Skill 负责识别项目当前状态、调用内部专业模块、维护 Human Gate、复用最新确认产物并从断点继续。
+
+根目录旧 `skills/` 兼容镜像已删除，不再维护双目录。
 
 ## 统一流程
 
@@ -50,9 +58,7 @@ Phase 4  sourcing-strategy
 | `supplier-shortlist` | 0.5.0 | 供方回复、AI建议、人工最终短名单、报批 Handoff |
 | `sourcing-strategy` | 0.7.4 | V3 支出/市场分析、采购方案报告 |
 
-这些模块仍保留在 `.agents/skills/` 中作为规则、模板和测试的权威实现，但用户无需手工串联。
-
-兼容镜像 `skills/` 暂时保留。
+这些模块只保留在 `.agents/skills/` 中，作为规则、模板和测试的权威实现。用户无需手工串联。
 
 ## 统一状态机
 
@@ -148,7 +154,7 @@ Web 可用且地区/品类明确时应主动研究公开市场。公网市场资
 
 ## 模板保护
 
-统一主 Skill 不搬迁已经验证的二进制模板，仍由内部模块按原路径使用：
+统一主 Skill 不搬迁已经验证的二进制模板，仍由内部模块按 `.agents/skills/` 下的原路径使用：
 
 - 历史采购分析需求清单模板；
 - 标准需求清单模板；
@@ -156,8 +162,6 @@ Web 可用且地区/品类明确时应主动研究公开市场。公网市场资
 - 供方信息长名单模板；
 - 供方短名单模板；
 - 企业《物资采购方案报告模板.docx》。
-
-这样可以避免整合过程中重新编码/搬迁 Office 文件造成损坏。
 
 ## 核心 Guardrails
 
@@ -172,12 +176,10 @@ Web 可用且地区/品类明确时应主动研究公开市场。公网市场资
 9. 下游优先消费最新 `human_confirmed / final` 产物，旧草稿标记为 `superseded`。
 10. 所有重要结论、统计和计算必须可追溯。
 
-## v0.10.0
+## v0.11.0
 
-- 新增统一入口 `property-material-sourcing`；
-- 现有 5 个 Skill 转为统一入口下的内部专业模块；
-- 新增统一 Phase 0–4 状态机与断点续跑规则；
-- 新增 `schemas/property-material-sourcing-workflow.schema.yaml`；
-- 保留全部 Human Gate；
-- 保留内部模块原有模板路径，避免 Office 二进制搬迁风险；
-- `sourcing-strategy` 继续使用 v0.7.4 V3 内容深度 Gate。
+- 删除根目录 `skills/` 兼容镜像；
+- `.agents/skills/` 成为唯一 Skill Source of Truth；
+- README / AGENTS 统一移除双目录维护说明；
+- 检查发现 GitHub 中 `供方信息长名单模板.xlsx` ZIP 结构损坏，已用验证通过的 8 列无“供方编码”版本替换；
+- 供方长名单继续固定为：序号、供方名称、联系人姓名、联系电话、邮箱地址、联系信息来源、联系信息状态、备注。
