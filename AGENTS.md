@@ -38,4 +38,6 @@ Use the validated Office templates stored under the internal module template dir
 
 ## Canonical path
 
-`.agents/skills/` is canonical. `skills/` is a compatibility mirror until explicitly retired.
+`.agents/skills/` is the only Skill Source of Truth in this repository.
+
+The legacy root `skills/` compatibility mirror was retired in v0.11.0 and must not be recreated unless the repository intentionally adds support for a runtime that requires that path.
