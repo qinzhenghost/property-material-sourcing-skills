@@ -1,5 +1,19 @@
 # CHANGELOG
 
+## v0.11.0
+
+目录收敛与模板完整性修复。
+
+- 删除根目录 `skills/` 兼容镜像；
+- `.agents/skills/` 成为仓库唯一 Skill Source of Truth；
+- README / AGENTS 移除双目录维护说明；
+- 保留统一主入口 `.agents/skills/property-material-sourcing/SKILL.md` 与 5 个内部专业模块；
+- 企业 Office 模板继续只保存在对应 `.agents/skills/<module>/templates/` 下，不做重复副本；
+- 检查发现 GitHub 中 `.agents/skills/sourcing-invitation/templates/供方信息长名单模板.xlsx` ZIP/OOXML 包损坏：原文件 Blob `4ff7653fbcdadbb314bab505beb08f87c8ea756a`、大小 5282 bytes，ZIP 检查提示缺失数据；
+- 已使用本地验证通过的无“供方编码”8列版本替换，Blob 更新为 `e894c1f1ac5a1a556d3cab2dbb2f2f5fd6b118ba`、大小 5684 bytes；
+- 修复后的供方长名单字段固定为：序号、供方名称、联系人姓名、联系电话、邮箱地址、联系信息来源、联系信息状态、备注；
+- 修复版通过 ZIP 完整性、OOXML 核心结构、`artifact_tool` 实际导入和公式错误扫描。
+
 ## v0.10.0
 
 将现有 5 个物业物资采购 Skill 整合为一个统一推荐入口。
